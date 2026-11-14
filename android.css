@@ -1,0 +1,82 @@
+/* Phone layout for the Android build (loaded after the shared styles). */
+html.android, html.android body { -webkit-tap-highlight-color: transparent; }
+html.android body { font-size: 15px; }
+
+/* header: brand + stats on top, tabs as a bottom bar */
+html.android .hdr { padding-block: 8px 6px; gap: 6px 10px; }
+html.android .hdr .brand { font-size: 17px; }
+html.android .hdr .top-stats { gap: 6px; }
+html.android #lvTitle { display: none; }
+html.android .chip, html.android .icon-btn { font-size: 12px; padding: 2px 8px; }
+html.android .hdr nav.tabs {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 25; order: 9;
+  background: var(--bg); border-top: 1px solid var(--line);
+  display: flex; justify-content: space-around; gap: 0;
+  padding: 0 env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+}
+html.android .hdr nav.tabs button { flex: 1 1 0; padding: 13px 0 12px; font-size: 15px; letter-spacing: .06em; border-bottom: 0; border-top: 2px solid transparent; }
+html.android .hdr nav.tabs button[aria-current="page"] { border-top-color: var(--gold); }
+html.android main { padding-block: 14px 86px; }
+html.android body.kb-open .hdr nav.tabs { display: none; }
+
+/* writing view: fits above the keyboard */
+html.android body.mode-editor main { padding-block: 8px 62px; }
+html.android body.mode-editor.kb-open main { padding-bottom: 6px; }
+html.android body.mode-editor.kb-open .hdr { display: none; }
+html.android .ed-head { gap: 2px 10px; }
+html.android .ed-head .crumb { font-size: 12px; }
+html.android .ed-head .ch-title { font-size: 16px; min-width: 0; flex-basis: 100%; }
+html.android .ed-tools { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 6px 0; padding-bottom: 2px; }
+html.android .ed-tools::-webkit-scrollbar { display: none; }
+html.android .ed-tools .btn { flex: none; }
+html.android .ed-tools .spacer { flex: 0 0 8px; }
+html.android textarea.paper { padding: 12px 12px 30px; border-radius: 8px; }
+html.android .hint-key { display: none; }
+html.android .ed-status { margin-top: 4px; }
+html.android #slimeFloat { width: 116px; padding: 4px 6px 2px; }
+html.android #slimeFloat .mini-slime { width: 72px; height: 54px; }
+html.android #slimeFloat:hover { background: transparent; outline: 0; }
+html.android #slimeFloat.dragging { background: rgba(25, 21, 15, .72); }
+
+/* shelf and pages */
+html.android .bookshelf { padding: 0 10px; gap: 0 4px; }
+html.android .lib-head { gap: 8px; }
+html.android .lib-head .btn { padding: 6px 10px; font-size: 13px; }
+html.android #libFolder, html.android #wFolder, html.android #sRootOpen, html.android #sRootChange { display: none; }
+html.android .work-top .spine-stand { height: auto; min-height: 0; justify-content: flex-start; }
+html.android .stats { grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+html.android .stat { padding: 8px; }
+html.android .stat .v { font-size: 17px; }
+html.android .lv-banner { top: 56px; padding: 10px 24px 12px; }
+html.android .toast { bottom: calc(70px + env(safe-area-inset-bottom, 0px)); }
+html.android dialog { max-width: calc(100vw - 20px); }
+html.android .stamps { gap: 3px; }
+html.android .stamp { font-size: 10px; padding: 5px 0; }
+
+/* keep everything inside the screen width; only the symbol row scrolls sideways */
+html.android main, html.android #v-editor, html.android #edBody, html.android .paper-wrap, html.android .ed-head, html.android .ed-tools { min-width: 0; max-width: 100%; }
+html.android main { overflow-x: hidden; }
+html.android textarea.paper { width: 100%; box-sizing: border-box; }
+
+/* chapter notes / plot (v1.1.1): tabs hang from the bottom edge of the text box, the panel covers its lower half */
+html.android #sideTabs { position: absolute; left: auto; right: 14px; top: auto !important; bottom: -27px; flex-direction: row; gap: 6px; z-index: 8; }
+html.android .side-tab { writing-mode: horizontal-tb; width: auto; min-width: 66px; height: 27px; padding: 0 12px; border: 1px solid var(--gold-deep); border-top: 0; border-radius: 0 0 8px 8px; font-size: 12.5px; letter-spacing: .2em; display: flex; align-items: center; justify-content: center; }
+html.android #sidePanel { position: absolute; left: 0; right: 0; bottom: 0; top: auto !important; width: auto !important; height: 56% !important; border-radius: 10px 10px 8px 8px; box-shadow: 0 -10px 24px rgba(0,0,0,.6); }
+html.android #sidePanel.typing, html.android body.kb-open #sidePanel { top: 0 !important; height: auto !important; box-shadow: none; }
+html.android .sp-head .sp-x { display: block; }
+html.android .sp-body { font-size: 13.5px; padding: 10px 14px; }
+html.android .ed-status { padding-right: 150px; min-height: 22px; }
+/* work page: the plot box gets the full width under the spine and title */
+html.android .plot-field.wide { margin-top: 2px; }
+/* phone: the cover window opens under the cover, across the page */
+html.android .cov-pop { left: 0 !important; top: calc(100% + 8px) !important; width: auto; right: 0; max-width: none; }
+html.android .cov-pop.front .cover-pick { grid-template-columns: repeat(auto-fill, minmax(58px, 1fr)); }
+/* v1.1.2: phone plot box — name on its own line, the buttons under it */
+html.android .pf.pf-phone { flex-wrap: wrap; }
+html.android .pf.pf-phone .pf-info { flex: 1 1 calc(100% - 52px) !important; }
+html.android .pf.pf-phone .btn { margin-left: auto; }
+html.android .pf.pf-phone .btn + .btn { margin-left: 6px; }
+html.android body.plot-mode textarea.paper { font-family: var(--font-ui); }
+
+/* v1.1.8: notes that only make sense on the PC */
+html.android .pc-only { display: none; }

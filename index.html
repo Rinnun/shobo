@@ -1,0 +1,526 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<title>蛇喰鷲書房</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="書房">
+<meta name="theme-color" content="#0f0d0a">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<script src="boot-guard.js"></script>
+<script src="web-boot.js"></script>
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="android.css">
+<link rel="stylesheet" href="web.css">
+<style>
+[hidden]{display:none!important}
+body{margin:0}
+.dmg.heal{color:var(--ok)}
+.paper-wrap{position:relative}
+.paper-wrap textarea{display:block}
+#fxCanvas{position:absolute;left:0;top:0;pointer-events:none;z-index:2}
+.check{display:flex;gap:8px;align-items:center;font-size:14px}
+.ver-line{margin:0;font-family:var(--font-display);font-weight:700;color:var(--gold);font-variant-numeric:tabular-nums}
+.ch-check{display:flex;align-items:center;gap:10px;flex:1;min-width:0;cursor:pointer}
+.ch-check input{width:18px;height:18px;accent-color:var(--gold);flex:none}
+.chapters.picking li.sel{background:#2a2110}
+.ch-pickbar{margin-bottom:0}
+.hidden-files summary{cursor:pointer;color:var(--muted);font-size:14px;padding:4px 0}
+.hidden-files .chapters li{gap:10px}
+.move-plan{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;max-height:40vh;overflow:auto}
+.move-plan li{border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--panel-2)}
+.trash-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.trash-list li{display:flex;gap:10px;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--panel-2)}
+.trash-list .t{min-width:0;word-break:break-all}
+.ed-tools{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:10px 0 8px}
+.ed-tools .sym{font-family:var(--font-mincho);min-width:44px}
+.tool-sep{width:1px;height:22px;background:var(--line);margin:0 4px}
+.tidy-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;border:1px solid #5a2c25;background:#1d1210;border-radius:10px;padding:8px 12px;margin-bottom:16px}
+.book{position:relative;width:100%}
+.book.picked .cover{outline:3px solid var(--danger);outline-offset:3px;opacity:.75}
+.pick-mark{position:absolute;top:8px;right:8px;width:26px;height:26px;border-radius:50%;border:2px solid var(--ink);background:rgba(0,0,0,.55);display:grid;place-items:center;font-weight:700;color:#fff;z-index:2}
+.book.picked .pick-mark{background:var(--danger);border-color:var(--danger)}
+#libTidy[aria-pressed="true"]{border-color:var(--danger);color:var(--danger)}
+/* bookshelf: spines stand on planks; a spine grows wider the more is written */
+.bookshelf{display:flex;flex-wrap:wrap;align-items:flex-end;gap:0 5px;padding:0 22px;border-radius:12px;
+  background:repeating-linear-gradient(to bottom,transparent 0 252px,#4a3320 252px 255px,#2e2014 255px 266px,#1b130c 266px 270px),
+  radial-gradient(ellipse at 50% 0,#1d1913,#110f0b 70%);box-shadow:inset 0 10px 30px rgba(0,0,0,.6),0 0 0 1px #2a2218}
+.spine-btn{position:relative;height:252px;margin-bottom:18px;display:flex;align-items:flex-end;background:none;border:0;padding:0;cursor:pointer}
+.spine-btn .spine{transition:transform .18s}
+.spine-btn:hover .spine,.spine-btn:focus-visible .spine{transform:translateY(-8px)}
+.spine-btn.picked .spine{outline:3px solid var(--danger);outline-offset:2px;opacity:.75}
+.spine-btn .pick-mark{top:auto;bottom:calc(var(--h) + 8px);right:50%;transform:translateX(50%)}
+.slot-new{height:252px;margin-bottom:18px;display:flex;align-items:flex-end;background:none;border:0;padding:0;cursor:pointer}
+.slot-new span{width:42px;height:206px;border:2px dashed #6b5630;border-radius:4px;display:grid;place-items:center;color:#9a7f45;transition:border-color .15s,color .15s}
+.slot-new:hover span{border-color:var(--gold);color:var(--gold)}
+.shelf-hint{margin:10px 2px 0}
+
+.spine{--band:linear-gradient(90deg,#7a5612,#f0cf72 50%,#7a5612);position:relative;width:var(--w);height:var(--h);border-radius:3px 3px 2px 2px;overflow:hidden;display:flex;flex-direction:column;align-items:center;color:#f1dfae;
+  box-shadow:inset -4px 0 6px rgba(0,0,0,.35),inset 3px 0 3px rgba(255,255,255,.1),2px 4px 8px rgba(0,0,0,.55);flex:none}
+.spine::before,.spine::after{content:"";position:absolute;left:0;right:0;height:3px;background:var(--band);box-shadow:0 1px 0 rgba(0,0,0,.35);z-index:1}
+.spine::before{top:7%}.spine::after{bottom:9%}
+.sp-title{position:relative;z-index:2;margin-top:calc(var(--h) * .13);writing-mode:vertical-rl;font-family:var(--font-display);font-weight:800;font-size:var(--fs);line-height:1.15;letter-spacing:.1em;max-height:calc(var(--h) * .64);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sp-deco{position:absolute;inset:0;pointer-events:none;z-index:1}
+.sp-label .sp-title{background:rgba(0,0,0,.55);padding:6px 2px;border-radius:2px}
+
+.sp-kraft{background:linear-gradient(90deg,#a98a5c,#d6bf96 45%,#a3845a);color:#3b2d17;--band:linear-gradient(90deg,#5a4224,#8a6a3a,#5a4224)}
+.sp-ai{background:linear-gradient(90deg,#132746,#244579 45%,#142a4c)}
+.sp-enji{background:linear-gradient(90deg,#4f1520,#82293a 45%,#511621)}
+.sp-wakakusa{background:linear-gradient(90deg,#5e7c3c,#94b866 45%,#5d7a3b);color:#1d2b12}
+.sp-sakura{background:linear-gradient(90deg,#a98288,#dcbcc0 45%,#a7848a);color:#3c2629}
+.sp-ichimatsu{background:repeating-conic-gradient(#2b5c47 0 25%,#1c4130 0 50%) 0 0/14px 14px}
+.sp-yozora{background:radial-gradient(circle at 20% 30%,#fff 0 1px,transparent 1.5px) 0 0/23px 31px,radial-gradient(circle at 70% 80%,#d8d4ff 0 1px,transparent 1.5px) 0 0/19px 27px,linear-gradient(90deg,#0f1530,#33285f 45%,#111733);color:#efeaff}
+.sp-seigaiha{background:radial-gradient(circle at 50% 100%,#2a6c8c 0 18%,#e6f0f2 18% 24%,#2a6c8c 24% 40%,#e6f0f2 40% 46%,#2a6c8c 46% 62%,#e6f0f2 62% 68%,transparent 68%) 0 0/20px 10px,radial-gradient(circle at 50% 100%,#2a6c8c 0 18%,#e6f0f2 18% 24%,#2a6c8c 24% 40%,#e6f0f2 40% 46%,#2a6c8c 46% 62%,#e6f0f2 62% 68%,transparent 68%) 10px 5px/20px 10px,#2a6c8c}
+.sp-sumi{background:radial-gradient(ellipse at 20% 30%,#5a5a5a 0 18%,transparent 19%),radial-gradient(ellipse at 72% 58%,#3d3d3d 0 24%,transparent 25%),radial-gradient(ellipse at 38% 86%,#6a6a6a 0 12%,transparent 13%),linear-gradient(90deg,#161616,#2a2a2a 45%,#171717);color:#ececec;--band:linear-gradient(90deg,#555,#bbb,#555)}
+.sp-kinpaku{background:linear-gradient(160deg,#7c5810,#e8c463 30%,#b4852a 52%,#f4da8a 74%,#9a6f18);color:#2e2006;--band:linear-gradient(90deg,#5a3e08,#8a6414,#5a3e08)}
+
+/* 和綴じ: washi, bound with thread; title on a paper slip */
+.sp-watoji{background:repeating-linear-gradient(0deg,rgba(120,100,70,.05) 0 2px,transparent 2px 5px),linear-gradient(90deg,#d6caae,#f3ecdb 45%,#d3c6a9)}
+.sp-watoji::before,.sp-watoji::after{display:none}
+.sp-watoji .sp-deco{background:linear-gradient(to bottom,transparent 8%,#2b3a55 8% 9.2%,transparent 9.2% 33%,#2b3a55 33% 34.2%,transparent 34.2% 66%,#2b3a55 66% 67.2%,transparent 67.2% 91%,#2b3a55 91% 92.2%,transparent 92.2%)}
+.sp-watoji .sp-title{background:#fbf8f0;color:#1d1d1d;border:1px solid #9a8a72;padding:8px 3px;font-weight:600;margin-top:calc(var(--h) * .12);max-height:calc(var(--h) * .74);box-shadow:0 1px 2px rgba(0,0,0,.2)}
+
+/* 古書: worn leather with raised bands */
+.sp-kosho{background:radial-gradient(ellipse at 30% 20%,rgba(255,255,255,.07),transparent 40%),radial-gradient(ellipse at 70% 80%,rgba(0,0,0,.28),transparent 50%),linear-gradient(90deg,#3a2414,#6d4527 40%,#3f2716);color:#d6b46a}
+.sp-kosho::before,.sp-kosho::after{display:none}
+.sp-kosho .sp-deco{background:linear-gradient(to bottom,transparent 16%,rgba(0,0,0,.5) 16%,#8b5c34 16.6%,#b07a47 17.4%,rgba(0,0,0,.5) 18.4%,transparent 18.4%),linear-gradient(to bottom,transparent 30%,rgba(0,0,0,.5) 30%,#8b5c34 30.6%,#b07a47 31.4%,rgba(0,0,0,.5) 32.4%,transparent 32.4%),linear-gradient(to bottom,transparent 70%,rgba(0,0,0,.5) 70%,#8b5c34 70.6%,#b07a47 71.4%,rgba(0,0,0,.5) 72.4%,transparent 72.4%),linear-gradient(to bottom,transparent 84%,rgba(0,0,0,.5) 84%,#8b5c34 84.6%,#b07a47 85.4%,rgba(0,0,0,.5) 86.4%,transparent 86.4%)}
+.sp-kosho .sp-title{background:#24150b;border-top:1px solid #b08a45;border-bottom:1px solid #b08a45;padding:6px 2px;margin-top:calc(var(--h) * .2);max-height:calc(var(--h) * .44);color:#d9b56a}
+
+/* 魔導書: dark leather, double gold rules, a sigil ring */
+.sp-madousho{background:linear-gradient(90deg,#140b1c,#35204a 45%,#150c1e);color:#f2cf6a;--band:linear-gradient(to bottom,#e9c766 0 1px,transparent 1px 2px,#e9c766 2px 3px)}
+.sp-madousho .sp-title{text-shadow:0 0 6px rgba(242,196,67,.55);max-height:calc(var(--h) * .55)}
+.sp-madousho .sp-deco{background:radial-gradient(circle at 50% 81%,#f2cf6a 0 2px,transparent 2.5px),radial-gradient(circle at 50% 81%,transparent 0 calc(var(--w) * .2),#d9b04f calc(var(--w) * .2) calc(var(--w) * .2 + 1.5px),transparent calc(var(--w) * .2 + 2px))}
+
+/* 星図 */
+.sp-seizu{background:radial-gradient(circle at 30% 20%,#fff 0 1px,transparent 1.6px),radial-gradient(circle at 70% 34%,#cfe4ff 0 1.3px,transparent 1.9px),radial-gradient(circle at 42% 52%,#fff 0 1px,transparent 1.6px),radial-gradient(circle at 64% 74%,#fff 0 1.3px,transparent 1.9px),radial-gradient(circle at 36% 88%,#cfe4ff 0 1px,transparent 1.6px),linear-gradient(90deg,#0b1430,#1b2c5c 45%,#0c1632);color:#dfe8ff;--band:linear-gradient(90deg,#6f7b92,#e2e8f2,#6f7b92)}
+
+/* 竜鱗 */
+.sp-ryurin{background:radial-gradient(circle at 50% 0,transparent 0 4px,rgba(0,0,0,.5) 4px 5px,transparent 5.5px) 0 0/10px 7px,radial-gradient(circle at 50% 0,transparent 0 4px,rgba(0,0,0,.5) 4px 5px,transparent 5.5px) 5px 3.5px/10px 7px,linear-gradient(90deg,#123a2c,#2f7d5e 45%,#123d2e);color:#f2cf6a}
+.sp-ryurin .sp-title{background:rgba(0,0,0,.5);padding:6px 2px;border-radius:2px}
+
+/* work page and swatches */
+.work-top{grid-template-columns:auto 1fr}
+.work-top .spine-stand{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;min-height:210px;background:none;border:0;padding:0;cursor:pointer;position:relative;color:inherit;font:inherit}
+.cover-pick button{width:auto;height:auto;border:2px solid transparent;border-radius:4px;padding:2px;background:none}
+.good .pv .spine{margin:0 auto}
+
+main{padding-block:20px 60px}
+/* header in one row on wide windows */
+.hdr{display:flex;align-items:center;flex-wrap:wrap;gap:4px 18px;padding-block:8px 0}
+.hdr .brand{order:1}
+.hdr .top-stats{order:2;margin-left:auto}
+.hdr nav.tabs{order:3;flex:1 1 100%}
+@media (min-width:900px){
+  .hdr{padding-block:0}
+  .hdr nav.tabs{order:2;flex:1 1 auto;justify-content:center}
+  .hdr nav.tabs button{flex:0 0 auto;padding:15px 16px 12px}
+  .hdr .top-stats{order:3;margin-left:0}
+}
+/* writing view fills the window: the text box takes the remaining height */
+body.mode-editor{height:var(--vvh,100vh);overflow:hidden;display:flex;flex-direction:column}
+body.mode-editor main{flex:1;min-height:0;display:flex;flex-direction:column;padding-block:12px 10px}
+body.mode-editor #v-editor{flex:1;min-height:0;display:flex;flex-direction:column}
+#edBody{display:flex;flex-direction:column;flex:1;min-height:0}
+body.mode-editor .paper-wrap{flex:1;min-height:0}
+body.mode-editor textarea.paper{height:100%;min-height:0;resize:none}
+.ed-head{display:flex;align-items:baseline;gap:6px 14px;flex-wrap:wrap}
+.ed-head .crumb{margin:0;flex:none}
+.ed-head .ch-title{flex:1;min-width:200px;width:auto}
+.ed-status{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:6px;width:0;min-width:100%}
+.zone-pill{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:0 10px;font-variant-numeric:tabular-nums}
+.zone-pill.on{color:var(--gold-ink);background:linear-gradient(90deg,#ffd761,#c6a8ff,#9fe7ff);border-color:transparent;font-weight:700;box-shadow:0 0 12px var(--glow)}
+body.in-zone textarea.paper{border-color:var(--gold-deep);box-shadow:0 0 0 1px rgba(242,196,67,.22),0 0 26px rgba(198,168,255,.12)}
+body.in-zone #slimeFloat .mini-slime{filter:drop-shadow(0 0 6px rgba(242,196,67,.55))}
+.spark-pv{display:flex;gap:8px;align-items:center;justify-content:center}
+.lv-chip{position:relative;padding-bottom:5px}
+.xpbar{display:block;height:3px;border-radius:999px;background:#2b241a;overflow:hidden}
+.lv-chip .xpbar{position:absolute;left:10px;right:10px;bottom:2px}
+.xpbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--gold-deep),var(--gold));box-shadow:0 0 6px var(--glow);transition:width .3s}
+.xpbar.big{height:10px;border:1px solid var(--line)}
+.stamps{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin:4px 0}
+.stamp{border:1px solid var(--line);border-radius:8px;padding:6px 2px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;color:var(--muted);background:var(--panel-2)}
+.stamp .c{display:flex;align-items:center;gap:3px;font-variant-numeric:tabular-nums}
+.stamp.got{border-color:var(--gold-deep);color:var(--gold);opacity:.75}
+.stamp.today{border-color:var(--gold);color:var(--gold);box-shadow:0 0 12px var(--glow);background:#2a2110}
+.lv-banner{position:fixed;left:50%;top:70px;transform:translateX(-50%);z-index:40;pointer-events:none;text-align:center;padding:14px 34px 16px;border:1px solid var(--gold);border-radius:14px;background:rgba(25,20,12,.94);box-shadow:0 0 28px rgba(242,196,67,.35)}
+.lv-banner.show{animation:lvin 3.4s ease forwards}
+@keyframes lvin{0%{opacity:0;transform:translate(-50%,-10px)}10%{opacity:1;transform:translate(-50%,0)}80%{opacity:1}100%{opacity:0}}
+.lvb-t{font-family:var(--font-display);font-weight:800;letter-spacing:.2em;color:var(--gold);font-size:15px}
+.lvb-n{font-family:var(--font-display);font-weight:800;font-size:30px;color:var(--ink);text-shadow:0 0 12px var(--glow)}
+.lvb-title{font-size:13px;color:var(--gold);margin-bottom:8px}
+.spark-pv i{display:block;border-radius:50%}
+/* floating slime */
+#slimeFloat{position:fixed;left:0;top:0;z-index:15;width:150px;display:flex;flex-direction:column;align-items:center;padding:6px 8px 4px;border-radius:12px;cursor:grab;user-select:none;touch-action:none;transition:background .15s}
+#slimeFloat:hover{background:rgba(25,21,15,.72);outline:1px dashed var(--line)}
+#slimeFloat.dragging{cursor:grabbing;background:rgba(25,21,15,.72)}
+#slimeFloat .sf-live{display:flex;flex-direction:column;align-items:center;width:100%}
+#slimeFloat .hpbox{width:100%}
+#slimeFloat .hpbar{height:6px}
+#slimeFloat .hptext{justify-content:center;gap:8px;font-size:12px;margin-top:1px}
+#slimeFloat .mini-slime{width:96px;height:72px;display:block}
+.ribbon{background:linear-gradient(180deg,#ffd761,var(--gold) 60%,#d9a62f);color:var(--gold-ink);font-family:var(--font-display);font-weight:800;font-size:13px;letter-spacing:.14em;padding:5px 20px;box-shadow:0 0 14px var(--glow);clip-path:polygon(0 0,100% 0,91% 50%,100% 100%,0 100%,9% 50%);white-space:nowrap}
+.ribbon small{font-family:var(--font-ui);font-weight:700;letter-spacing:0;margin-left:6px;font-size:11.5px}
+.pathbox{font-size:12.5px;color:var(--muted);background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:6px 10px;word-break:break-all;font-variant-numeric:tabular-nums}
+.hint-key{font-size:11.5px;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:0 5px}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap hdr">
+    <div class="brand">蛇喰鷲書房</div>
+    <nav class="tabs" aria-label="画面">
+      <button data-view="library">書斎</button>
+      <button data-view="editor">執筆</button>
+      <button data-view="battle">討伐</button>
+      <button data-view="shop">商店</button>
+      <button data-view="settings">設定</button>
+    </nav>
+    <div class="top-stats">
+      <span class="chip lv-chip" id="lvChip">Lv <b id="lvNum">1</b> <span id="lvTitle" class="muted">見習い筆耕</span><span class="xpbar" aria-hidden="true"><i id="xpFill"></i></span></span>
+      <span class="chip"><span class="coin"></span><b id="coinNum">0</b></span>
+      <button class="icon-btn" id="bgmBtn" aria-pressed="false" title="BGMの再生／停止">♪ BGM</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div id="conn" class="banner" hidden></div>
+
+  <section id="v-library" hidden>
+    <div id="lib-list">
+      <div class="lib-head">
+        <div><h2>書斎</h2><p class="muted small" style="margin:2px 0 0">作品はフォルダ、章はmdファイルとしてPCに保存されます。</p></div>
+        <div class="spacer"></div>
+        <button class="btn ghost" id="libFolder">フォルダを開く</button>
+        <button class="btn ghost" id="libTidy" aria-pressed="false">整理</button>
+        <button class="btn ghost" id="libImport">mdを取り込む</button>
+        <button class="btn gold" id="libNew">新しい作品</button>
+      </div>
+      <div class="bk-nag" id="bkNag" role="status" hidden></div>
+      <div id="shelf"></div>
+    </div>
+    <div id="lib-work" hidden></div>
+  </section>
+
+  <section id="v-editor" hidden>
+    <div id="edEmpty" class="empty" hidden>
+      <p>書斎で作品と章を選ぶと、ここで書けます。</p>
+      <button class="btn gold" data-go="library">書斎へ</button>
+    </div>
+    <div id="edBody" hidden>
+      <div class="ed-head">
+        <div class="crumb"><button class="w" id="edWork"></button><span class="muted">›</span><span class="muted small" id="edChNo"></span></div>
+        <input class="ch-title" id="edTitle" placeholder="章のタイトル（ファイル名）" aria-label="章のタイトル">
+        <span class="pm-badge" id="pmBadge" hidden>プロット編集中・自動保存なし</span>
+      </div>
+      <div class="ed-tools" role="toolbar" aria-label="入力と書き出し">
+        <button class="btn sm sym" data-wrap="「|」" title="かぎかっこ">「」</button>
+        <button class="btn sm sym" data-wrap="『|』" title="二重かぎかっこ">『』</button>
+        <button class="btn sm sym" data-wrap="（|）" title="丸かっこ">（）</button>
+        <button class="btn sm sym" data-ins="……" title="三点リーダー2つ">……</button>
+        <button class="btn sm sym" data-ins="──" title="ダッシュ2つ">──</button>
+        <span class="tool-sep"></span>
+        <button class="btn sm" id="edScene" title="場面転換を入れる（Ctrl+Shift+Enter）">＊ 場面転換</button>
+        <span class="spacer"></span>
+        <button class="btn sm" id="edCopy">全文コピー</button>
+        <button class="btn sm" id="edExport">mdで書き出す</button>
+        <button class="btn sm ghost" id="edPrev" title="前の章">‹ 前</button>
+        <button class="btn sm ghost" id="edNext" title="次の章">次 ›</button>
+      </div>
+      <div class="ed-tools pm-tools" id="pmTools" role="toolbar" aria-label="プロットの書式" hidden>
+        <button class="btn sm" data-h="1" title="# 見出し1">大見出し</button>
+        <button class="btn sm" data-h="2" title="## 見出し2">中見出し</button>
+        <button class="btn sm" data-h="3" title="### 見出し3">小見出し</button>
+        <span class="pm-dd"><button class="btn sm" id="pmHMore" aria-haspopup="true" aria-expanded="false">見出し群 ▾</button></span>
+        <span class="tool-sep"></span>
+        <button class="btn sm" id="pmBullet" aria-pressed="false" title="箇条書き（改行すると次の行にも付きます）">・箇条書き</button>
+        <button class="btn sm ghost" id="pmIn" title="字下げ（Tab）">⇥</button>
+        <button class="btn sm ghost" id="pmOut" title="字下げを戻す（Shift+Tab）">⇤</button>
+        <span class="tool-sep"></span>
+        <button class="btn sm" id="pmRule" title="区切り線（---）">区切り線</button>
+        <span class="pm-dd"><button class="btn sm" id="pmTags" aria-haspopup="true" aria-expanded="false">タグ ▾</button></span>
+        <span class="pm-dd"><button class="btn sm" id="pmOut2" aria-haspopup="true" aria-expanded="false">書き出し ▾</button></span>
+      </div>
+      <div class="sr-bar" id="srBar" role="search" aria-label="検索と置き換え" hidden>
+        <input class="sr-in" id="srQ" placeholder="探す言葉" aria-label="探す言葉" autocomplete="off">
+        <span class="sr-cnt" id="srCnt" aria-live="polite"></span>
+        <button class="btn sm ghost" id="srPrev" title="前へ（Shift+Enter）" aria-label="前へ">▲</button>
+        <button class="btn sm ghost" id="srNext" title="次へ（Enter）" aria-label="次へ">▼</button>
+        <button class="btn sm ghost" id="srMore" title="置き換え（Ctrl+H）" aria-expanded="false">置き換え ▸</button>
+        <span class="sr-rep" id="srRepRow" hidden>
+          <input class="sr-in" id="srR" placeholder="置き換える言葉" aria-label="置き換える言葉" autocomplete="off">
+          <button class="btn sm" id="srOne">置き換え</button>
+          <button class="btn sm" id="srAll">すべて置き換え</button>
+        </span>
+        <button class="btn sm ghost sr-x" id="srClose" title="閉じる（Esc）" aria-label="閉じる">×</button>
+      </div>
+      <div class="paper-wrap">
+        <textarea class="paper mincho" id="edText" placeholder="ここから書き始めましょう。" aria-label="本文" spellcheck="false"></textarea>
+        <div class="wysi" id="pmEd" contenteditable="true" spellcheck="false" lang="ja" role="textbox" aria-multiline="true" aria-label="プロット" hidden></div>
+        <canvas id="fxCanvas" aria-hidden="true"></canvas>
+      </div>
+      <div class="ed-status">
+        <span class="save-state" id="edCount">0字</span>
+        <span class="save-state" id="edSave"></span>
+        <button class="btn sm gold" id="pmSave" hidden>保存（Ctrl+S）</button>
+        <span class="zone-pill" id="zonePill" hidden></span>
+        <span class="spacer"></span>
+        <span class="hint-key nv-hint">Ctrl+S 保存</span>
+        <span class="hint-key nv-hint">Ctrl+Shift+Enter 場面転換</span>
+        <span class="hint-key nv-hint">スライムはドラッグで移動</span>
+        <span class="hint-key pm-hint" hidden>Tab 字下げ</span>
+        <span class="hint-key pm-hint" hidden>Shift+Tab 戻す</span>
+        <span class="hint-key pm-hint" hidden>討伐には数えません</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="v-battle" hidden>
+    <div class="panel stack lv-panel">
+      <div class="row"><span class="big-num" id="lvBig" style="font-size:26px">Lv 1</span><span id="lvBigTitle" class="muted"></span><span class="spacer"></span><span class="muted small" id="lvBigNums" style="font-variant-numeric:tabular-nums"></span></div>
+      <div class="xpbar big" aria-hidden="true"><i id="lvBigFill"></i></div>
+      <p class="note" id="lvBigNote"></p>
+    </div>
+    <div style="height:18px"></div>
+    <div class="panel glow arena">
+      <div class="name" id="slimeName">本日のスライム</div>
+      <canvas id="bigSlime" width="192" height="144"></canvas>
+      <div class="hpbox">
+        <div class="hpbar" id="bigHp"><i style="width:100%"></i></div>
+        <div class="hptext"><span>HP <b id="bigHpNum">1000</b> / <span id="bigGoal">1000</span></span><span id="bigState"></span></div>
+      </div>
+      <div><div class="muted small">今日の与ダメージ</div><div class="big-num" id="bigDmg">0</div></div>
+      <p class="note" id="battleNote"></p>
+    </div>
+    <div style="height:18px"></div>
+    <div class="stats">
+      <div class="stat"><div class="k">連続討伐</div><div class="v" id="stStreak">0日</div></div>
+      <div class="stat"><div class="k">討伐数</div><div class="v" id="stKills">0体</div></div>
+      <div class="stat"><div class="k">累計文字数</div><div class="v" id="stTotal">0</div></div>
+    </div>
+    <div style="height:10px"></div>
+    <div class="stats">
+      <div class="stat"><div class="k">ゾーンに入った回数</div><div class="v" id="stZoneN">0回</div></div>
+      <div class="stat"><div class="k">ゾーン最長</div><div class="v" id="stZoneMax">0:00</div></div>
+      <div class="stat"><div class="k">ゾーン累計</div><div class="v" id="stZoneSum">0:00</div></div>
+    </div>
+    <p class="note" style="margin-top:8px">20秒以上手を止めずに3分書き続けると、ゾーンに入ります。</p>
+    <div style="height:18px"></div>
+    <div class="panel stack">
+      <div class="row"><h3>直近2週間</h3><span class="spacer"></span><span class="muted small">金色＝討伐した日</span></div>
+      <div class="cal" id="cal"></div>
+    </div>
+  </section>
+
+  <section id="v-shop" hidden>
+    <div class="lib-head"><div><h2>商店</h2><p class="muted small" style="margin:2px 0 0">スライムを倒して貯めたコインで買い物できます。</p></div></div>
+    <div class="seg" id="shopSeg">
+      <button data-cat="cover" aria-pressed="true">本の装丁</button>
+      <button data-cat="slime" aria-pressed="false">討伐対象</button>
+      <button data-cat="bgm" aria-pressed="false">BGM</button>
+      <button data-cat="spark" aria-pressed="false">火花の色</button>
+    </div>
+    <p class="note" id="shopHint" style="margin-bottom:12px"></p>
+    <div class="goods" id="goods"></div>
+  </section>
+
+  <section id="v-settings" hidden>
+    <div class="lib-head"><h2>設定</h2></div>
+    <div class="set-grid">
+      <div class="panel stack">
+        <h3>保存先</h3>
+        <div class="pathbox" id="sRoot"></div>
+        <div class="row"><button class="btn sm" id="sRootOpen">フォルダを開く</button><button class="btn sm" id="sRootChange">保存先を変える</button><button class="btn sm" id="sMove">本棚を引っ越す</button></div>
+        <p class="note pc-only">「保存先を変える」は別の本棚を開くだけ、「本棚を引っ越す」は今の作品と記録を新しい場所へ写してから切り替えます。</p>
+        <p class="note pc-only">Google Drive パソコン版を入れて、Drive内のフォルダを保存先にすると、原稿が自動でDriveにも保存されます。コインや討伐記録も同じフォルダに入ります。</p>
+      </div>
+      <div class="panel stack" id="sTrashPanel" hidden>
+        <h3>最近消したもの</h3>
+        <p class="note">消した作品や章は、ここに30日間残ります。</p>
+        <ul class="trash-list" id="sTrashList"></ul>
+      </div>
+      <div class="panel stack">
+        <h3 id="bxHead">引き継ぎ</h3>
+        <p class="note" id="bxNote">全作品とコイン・討伐記録を1つのファイルにまとめます。Driveにアップロードしておけば、別のPCや今後のAndroid版で読み込めます。</p>
+        <div class="row"><button class="btn sm" id="bExport">まとめて書き出す</button><button class="btn sm" id="bImport">引き継ぎファイルを読み込む</button></div>
+        <p class="note">読み込むと、同じ章は更新が新しい方を残します。上書きされた章も backup に元の状態が残ります。討伐記録と買った品は両方を合わせます。</p>
+      </div>
+      <div class="panel stack">
+        <h3>討伐</h3>
+        <div class="field"><label for="sGoal">1日の目標文字数（スライムのHP）</label><input class="input" id="sGoal" type="number" min="100" max="50000" step="100"></div>
+        <div class="field"><label for="sDay">日付が変わる時刻</label>
+          <select class="input" id="sDay"><option value="0">0時</option><option value="1">1時</option><option value="2">2時</option><option value="3">3時</option><option value="4">4時</option><option value="5">5時</option><option value="6">6時</option></select></div>
+        <p class="note">夜更かしして書いた分も「その日」に数えるための設定です。</p>
+        <div class="field"><label>毎日あらわれる討伐対象</label>
+          <div class="radio" role="radiogroup" aria-label="毎日あらわれる討伐対象">
+            <label><input type="radio" name="sFoe" value="pick"> <span>商店で選んだものだけ</span></label>
+            <label><input type="radio" name="sFoe" value="random"> <span>持っているものから毎日ランダム<br><span class="muted small">スライムの色違いもモンスターも、持っているものの中から日替わりで選びます</span></span></label>
+          </div></div>
+      </div>
+      <div class="panel stack">
+        <h3>エディタ</h3>
+        <div class="field"><label for="sFont">書体</label><select class="input" id="sFont"><option value="mincho">明朝</option><option value="gothic">ゴシック</option></select></div>
+        <div class="field"><label for="sSize">文字の大きさ</label><input class="input" id="sSize" type="range" min="14" max="26" step="1"></div>
+        <label class="check"><input type="checkbox" id="sFx"> 打つたびに火花を散らす（色は商店で）</label>
+        <label class="check"><input type="checkbox" id="sChDate"> 作品ページの章の一覧に、最後に書いた日時を出す</label>
+        <div class="field"><label for="sScene">場面転換の記号</label><input class="input" id="sScene" placeholder="　＊　＊　＊"></div>
+        <p class="note">空白と改行は数えません。貼り付けもダメージになり、消した分はスライムが回復します。mdの取り込みはダメージになりません。</p>
+      </div>
+      <div class="panel stack" id="sPlotPanel">
+        <h3>プロット</h3>
+        <div class="field"><label>新しくプロットを選んだ作品の初めの設定</label>
+          <div class="radio" role="radiogroup" aria-label="プロットの初めの設定">
+            <label><input type="radio" name="sPlotDef" value="auto"> <span>いちばん新しい版を自動で使う</span></label>
+            <label><input type="radio" name="sPlotDef" value="fixed"> <span>選んだ版に固定する</span></label>
+          </div></div>
+        <label class="check"><input type="checkbox" id="sPlotClean"> 古い版を自動でごみ箱に入れる（自動の作品だけ）</label>
+        <div class="field"><label>古い版が書き出しフォルダの中にあるとき</label>
+          <div class="radio" role="radiogroup" aria-label="書き出しフォルダの扱い">
+            <label><input type="radio" name="sPlotFolder" value="folder"> <span>フォルダごとごみ箱に入れる</span></label>
+            <label><input type="radio" name="sPlotFolder" value="file"> <span>プロットのファイルだけ入れる</span></label>
+          </div></div>
+        <p class="note">作品ごとの切り替えは、作品ページのプロット欄でできます。ごみ箱に入れたものは、PCとDriveのごみ箱から30日以内なら戻せます。いちばん新しい版が空っぽのときや、前の版の半分より短いときは、念のため消さずに残します。</p>
+      </div>
+      <div class="panel stack" id="sPmPanel">
+        <h3>プロットモード</h3>
+        <div class="field"><label>プロットの見え方</label>
+          <div class="radio" role="radiogroup" aria-label="プロットの見え方">
+            <label><input type="radio" name="sPmView" value="wysi"> <span>見たまま（見出しは大きく、箇条書きは「・」）</span></label>
+            <label><input type="radio" name="sPmView" value="raw"> <span>記号のまま（「#」「- 」をそのまま見せる）</span></label>
+          </div></div>
+        <div class="field"><label>タグ（【公式】など）</label>
+          <div class="radio" role="radiogroup" aria-label="タグの見え方">
+            <label><input type="radio" name="sPmTag" value="plain"> <span>普通の文字</span></label>
+            <label><input type="radio" name="sPmTag" value="chip"> <span>色付きの札にする（見たままのときだけ）</span></label>
+          </div></div>
+        <p class="muted small" style="margin:0">どちらの見え方でも、ファイルには同じ md で保存します。「記号のまま」は、見たままで困ったときの逃げ道です。</p>
+      </div>
+      <div class="panel stack">
+        <h3>BGM</h3>
+        <div class="field"><label for="sVol">音量</label><input class="input" id="sVol" type="range" min="0" max="1" step="0.05"></div>
+        <p class="note">曲は商店で買って選べます。再生は上の「♪ BGM」から。</p>
+      </div>
+      <div class="panel stack help" style="grid-column:1/-1">
+        <h3>使い方</h3>
+        <p class="muted small" style="margin:0">見出しを押すと開きます。スマホで違うところは「スマホ：」と書いてあります。</p>
+        <details>
+          <summary>プロットを書く（プロットモード）</summary>
+          <img src="help/tabmenu.jpg" alt="執筆タブを右クリックしたところ" loading="lazy">
+          <ul>
+            <li>上の「執筆」タブを右クリックして「プロットを書く」を選びます。作品ページの「✎ プロットを書く」からも開けます。本文に戻るときも同じメニューから「本文を書く」を選びます。<br><span class="muted">スマホ：「執筆」タブを長押しします。</span></li>
+            <li>プロットがまだない作品では「（作品名）プロット.md」を作って開きます。</li>
+          </ul>
+          <img src="help/plot.jpg" alt="プロットモードの画面" loading="lazy">
+          <ul>
+            <li>見出しは大きく、箇条書きは「・」「◦」「▪」で、打ったときから仕上がりの見た目で表示します。ファイルには「#」「- 」の付いた md で保存します。記号のまま見たいときは、設定の「プロットモード」で「記号のまま」にします。</li>
+            <li>ほかのアプリ（チャットAIなど）からコピーした見出し・箇条書きは、貼り付けるとそのまま見出し・箇条書きになります。字下げは4マスにそろえます。番号付きの行は、番号をただの文字として入れます。</li>
+            <li>大見出し（#）・中見出し（##）・小見出し（###）。「見出し群 ▾」で見出し1〜6と「記号を外す」。同じ見出しをもう一度押すと外れます。</li>
+            <li>「・箇条書き」で行の頭に「- 」。箇条書きの行で改行すると次の行にも付き、何も書かずにもう一度改行すると1段戻ります（いちばん外なら箇条書きが終わります）。行の頭で Backspace を押しても1段戻ります（見出しの行ならふつうの行に）。Ctrl+Z で元に戻せます。</li>
+            <li>「書き出し ▾」の「箇条書きの空行を詰める」で、アップノートのmdに入っている空行（箇条書きの段が浅くなるところの空行）だけをまとめて消せます。ほかの空行はそのままです。Ctrl+Z で戻せます。</li>
+            <li>⇥ ⇤ か Tab / Shift+Tab で4マスずつ字下げ。「区切り線」は前後に空行を入れた「---」。</li>
+            <li>「タグ ▾」で【公式】などをカーソルの位置に入れます。「タグを編集…」で増やしたり並べ替えたりできます。</li>
+            <li><b>自動では保存しません。</b>保存ボタンか Ctrl+S で保存します。保存していない変更があるまま画面を移ったり閉じたりすると、どうするか聞きます。</li>
+            <li>保存するたびに、前の中身を「_書房の記録\backup\plot\作品名」に残します（新しい方から40個）。前の半分より短くなる保存は、念のため確認します。</li>
+            <li>プロットを打っても討伐には数えません。</li>
+          </ul>
+        </details>
+        <details>
+          <summary>検索と置き換え</summary>
+          <ul>
+            <li>執筆画面で <b>Ctrl+F</b> を押すと、本文の上に検索の欄が出ます。見つかった言葉は薄い金色、今いる1件は濃い金色になります。Enter で次へ、Shift+Enter で前へ、Esc で閉じます。</li>
+            <li><b>Ctrl+H</b>（または欄の「置き換え ▸」）で置き換えの欄が開きます。「置き換え」は今の1件だけ、「すべて置き換え」は開いている章の中の全部です（ほかの章は変わりません）。どちらも Ctrl+Z で戻せます。</li>
+            <li>置き換えで増えたり減ったりした字は、討伐のダメージにも回復にも数えません。</li>
+            <li>プロットモードでも同じように使えます。</li>
+            <li><span class="muted">スマホ：「執筆」タブを長押しして「検索・置き換え」を選びます。</span></li>
+          </ul>
+        </details>
+        <details>
+          <summary>プロットを選ぶ（作品ページ）</summary>
+          <img src="help/plotfield.jpg" alt="作品ページのプロット欄" loading="lazy">
+          <ul>
+            <li>作品フォルダの md / txt から1つ選ぶと、それがプロットになり、章の一覧から外れます。中身はコピーせず、毎回そのファイルを読みます。</li>
+            <li>名前が同じで「(1)」「(2)」や「（スマホ 11-14）」の付いたファイルは、同じプロットの別の版として扱います。「いちばん新しい版を自動で」か「選んだ版に固定」を作品ごとに選べます。</li>
+            <li>スマホで直した版は「元の名前に戻す」で普通の名前に戻せます。その名前だった前のファイルは backup に移します。</li>
+            <li><span class="muted">スマホ：「ドライブから選ぶ」でプロットの md を選び、中身を写して持ちます。元のファイルを直したら「差し替える」で選び直します。</span></li>
+          </ul>
+        </details>
+        <details>
+          <summary>メモ（執筆画面の左）</summary>
+          <img src="help/memo.jpg" alt="執筆画面のメモ欄" loading="lazy">
+          <ul>
+            <li>プロットの欄では、上の「見出しへ移動…」から見出しを選ぶと、そこまで飛べます。</li>
+            <li>左端の「メモ」「プロット」のつまみで欄が開きます。メモは章ごとに1枚で、自動で保存されます。本文の書き出しやコピーには入りません。</li>
+            <li>「資料呼び出し」で作品フォルダの画像をメモに並べられます。Ctrl+V で貼った画像は作品フォルダに保存されます。画像をダブルクリックするといつもの画像ソフトで開きます。</li>
+            <li><span class="muted">スマホ：本文欄の右下の「メモ」「プロット」のタブから開きます。</span></li>
+          </ul>
+        </details>
+        <details>
+          <summary>表紙と装丁</summary>
+          <img src="help/cover.jpg" alt="装丁を選ぶ窓" loading="lazy">
+          <ul>
+            <li>作品ページの表紙をクリックすると開きます。<span class="muted">スマホ：長押しします。</span></li>
+            <li>表紙の向き：「縦書き・右開き」か「横書き・左開き」。題字の改行：「魔龍／帰巣録」のように「／」を入れたところで折り返します（背表紙にも使われます）。空欄なら自動です。</li>
+            <li>装丁は商店で買います。</li>
+          </ul>
+        </details>
+        <details>
+          <summary>PCとスマホのやり取り（引き継ぎファイル）</summary>
+          <ul>
+            <li>設定の「引き継ぎ」で書き出したファイルを、もう片方で読み込みます。章は新しい方を、メモは章ごとに新しい方を残します。コインと討伐の記録は合わせます。</li>
+            <li>スマホで書いたプロットは「（名前）（スマホ 月-日）.md」として届き、PCでは新しい版として作品フォルダに入ります。</li>
+            <li>PCから届いたプロットとスマホのプロットがぶつかったときは、元のファイルの日付が新しい方を残します。</li>
+          </ul>
+        </details>
+        <details>
+          <summary>討伐とコイン</summary>
+          <ul>
+            <li>打った字・貼り付けた字がダメージになり、消すと回復します。1日1体で、HPはその日の目標字数です（日付の区切りは設定の時刻）。</li>
+            <li>倒すと連続討伐日数に応じたコインがもらえます。商店で装丁や討伐対象（スライムの色・モンスター）を買えます。</li>
+            <li>3分書き続けるとゾーンに入ります。</li>
+          </ul>
+        </details>
+      </div>
+      <div class="panel stack">
+        <h3>このアプリについて</h3>
+        <p class="ver-line" id="sVer">蛇喰鷲書房</p>
+        <p class="note">不具合を伝えるときは、このバージョンも一緒に教えてください。</p>
+      </div>
+    </div>
+  </section>
+</main>
+<div id="slimeFloat" hidden title="ドラッグで移動できます">
+  <div class="sf-live" id="sfLive">
+    <div class="hpbox">
+      <div class="hpbar" id="miniHp"><i style="width:100%"></i></div>
+      <div class="hptext"><span>HP <b id="miniDmg">1000</b> / <span id="miniGoal">1000</span></span><span id="miniState"></span></div>
+    </div>
+    <div class="mini-wrap" id="miniWrap"><canvas class="mini-slime" id="miniSlime" width="96" height="72"></canvas></div>
+  </div>
+  <div class="ribbon" id="sfDone" hidden>討伐済み<small id="sfReward"></small></div>
+</div>
+<div id="sideTabs" hidden><button type="button" class="side-tab" data-side="memo" aria-pressed="false">メモ</button><button type="button" class="side-tab" data-side="plot" aria-pressed="false">プロット</button></div>
+<aside id="sidePanel" hidden aria-label="メモとプロット">
+  <div class="sp-head"><span class="t" id="spTitle"></span><span class="spacer"></span><span class="muted small" id="spNote"></span><button type="button" class="btn sm" id="spPick" hidden>資料呼び出し</button><button type="button" class="sp-x" id="spClose" aria-label="閉じる">×</button></div>
+  <div class="sp-body memo-ed" id="memoEd" contenteditable="true" spellcheck="false" hidden></div>
+  <div class="sp-body plot-view" id="plotView" hidden></div>
+  <div class="sp-foot" id="spFoot"></div>
+</aside>
+<div class="lv-banner" id="lvBanner" hidden aria-live="polite">
+  <div class="lvb-t">LEVEL UP!</div>
+  <div class="lvb-n" id="lvbNum">Lv 2</div>
+  <div class="lvb-title" id="lvbTitle"></div>
+  <div class="reward"><span class="coin"></span><span id="lvbCoin"></span></div>
+</div>
+<dialog id="dlg"></dialog>
+<script src="web-cap.js"></script>
+<script src="mdtools.js"></script>
+<script src="api-android.js"></script>
+<script src="renderer.js"></script>
+</body>
+</html>
