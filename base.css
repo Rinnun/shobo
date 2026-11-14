@@ -40,7 +40,7 @@ header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;backgroun
 .icon-btn[aria-pressed="true"]{border-color:var(--gold);color:var(--gold);box-shadow:0 0 10px var(--glow)}
 nav.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
 nav.tabs::-webkit-scrollbar{display:none}
-nav.tabs button{flex:1 0 auto;background:none;border:0;padding:6px 12px 9px;color:var(--muted);font-family:var(--font-display);font-weight:600;font-size:15px;letter-spacing:.1em;border-bottom:2px solid transparent}
+nav.tabs button{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;flex:1 0 auto;background:none;border:0;padding:6px 12px 9px;color:var(--muted);font-family:var(--font-display);font-weight:600;font-size:15px;letter-spacing:.1em;border-bottom:2px solid transparent}
 nav.tabs button[aria-current="page"]{color:var(--gold);border-bottom-color:var(--gold)}
 
 main{padding-block:20px 60px}

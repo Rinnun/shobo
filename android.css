@@ -14,7 +14,7 @@ html.android .hdr nav.tabs {
   display: flex; justify-content: space-around; gap: 0;
   padding: 0 env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
 }
-html.android .hdr nav.tabs button { flex: 1 1 0; padding: 13px 0 12px; font-size: 15px; letter-spacing: .06em; border-bottom: 0; border-top: 2px solid transparent; }
+html.android .hdr nav.tabs button { touch-action: none; flex: 1 1 0; padding: 13px 0 12px; font-size: 15px; letter-spacing: .06em; border-bottom: 0; border-top: 2px solid transparent; }
 html.android .hdr nav.tabs button[aria-current="page"] { border-top-color: var(--gold); }
 html.android main { padding-block: 14px 86px; }
 html.android body.kb-open .hdr nav.tabs { display: none; }

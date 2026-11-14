@@ -1940,8 +1940,7 @@ function showTabCtx(btn) {
   const m = document.createElement('div'); m.className = 'tab-ctx'; m.setAttribute('role', 'menu');
   m.innerHTML = `<button type="button" data-k="novel" aria-current="${!PM.on}">本文を書く<small>${chName ? esc(chName) : '書斎で章を選びます'}</small></button>`
     + `<button type="button" data-k="plot" aria-current="${PM.on}" ${w ? '' : 'disabled'}>プロットを書く<small>${w ? esc(plotName) : '書斎で作品を開くと選べます'}</small></button>`;
-  const r = btn.getBoundingClientRect(); m.style.left = Math.max(8, Math.min(innerWidth - 240, r.left)) + 'px'; m.style.top = (r.bottom + 4) + 'px';
-  document.body.appendChild(m); tabCtxEl = m;
+  m.style.visibility = 'hidden'; document.body.appendChild(m); tabCtxEl = m;
   m.querySelector('[data-k=novel]').addEventListener('click', () => { if (PM.on) pmExit(); else { closeTabCtx(); setView('editor'); } });
   m.querySelector('[data-k=plot]').addEventListener('click', () => pmEnter(wid));
   // the phone has no Ctrl+F: search lives in this menu there
@@ -1950,14 +1949,30 @@ function showTabCtx(btn) {
     b.disabled = !loaded.key || S.view !== 'editor'; m.appendChild(b);
     b.addEventListener('click', () => { closeTabCtx(); srOpen(false); });
   }
+  // v1.1.9 (measured after every item is in): on the phone the tabs are a bottom bar, so the menu opens above the tab when there is no room below
+  const r = btn.getBoundingClientRect(), mw = m.offsetWidth, mh = m.offsetHeight;
+  let top = r.bottom + 4; if (top + mh > innerHeight - 8) top = Math.max(8, r.top - mh - 4);
+  m.style.left = Math.max(8, Math.min(innerWidth - mw - 8, r.left)) + 'px'; m.style.top = top + 'px'; m.style.visibility = '';
 }
 {
   const tab = document.querySelector('nav.tabs button[data-view="editor"]');
   if (tab) {
-    tab.addEventListener('contextmenu', e => { e.preventDefault(); showTabCtx(tab); });
-    let lp = null, fired = false;
-    tab.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') return; fired = false; clearTimeout(lp); lp = setTimeout(() => { fired = true; showTabCtx(tab); }, 450); });
-    ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => tab.addEventListener(t, () => clearTimeout(lp)));
+    // v1.1.9: a real Android long-press starts selecting the word and sends pointercancel before our timer ends,
+    // so the label is unselectable (CSS + selectstart) and a cancel after a long-enough hold counts as the long-press
+    let lp = null, fired = false, t0 = 0, sx = 0, sy = 0;
+    const stop = () => { clearTimeout(lp); lp = null; };
+    const fire = () => {
+      stop(); if (fired) return; fired = true;
+      try { navigator.vibrate && navigator.vibrate(15); } catch (er) {}
+      try { getSelection().removeAllRanges(); } catch (er) {}
+      showTabCtx(tab);
+    };
+    tab.addEventListener('contextmenu', e => { e.preventDefault(); if (lp) fire(); else if (!fired) showTabCtx(tab); });
+    tab.addEventListener('selectstart', e => e.preventDefault());
+    tab.addEventListener('pointerdown', e => { fired = false; stop(); if (e.pointerType === 'mouse') return; t0 = Date.now(); sx = e.clientX; sy = e.clientY; lp = setTimeout(fire, 450); });
+    tab.addEventListener('pointermove', e => { if (lp && Math.abs(e.clientX - sx) + Math.abs(e.clientY - sy) > 12) stop(); });
+    tab.addEventListener('pointercancel', () => { if (lp && Date.now() - t0 >= 300) fire(); else stop(); });
+    ['pointerup', 'pointerleave'].forEach(t => tab.addEventListener(t, stop));
     tab.addEventListener('click', e => { if (fired) { fired = false; e.stopImmediatePropagation(); e.preventDefault(); } }, true);
   }
   document.addEventListener('pointerdown', e => { if (tabCtxEl && !e.target.closest('.tab-ctx')) closeTabCtx(); });
