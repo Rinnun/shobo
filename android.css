@@ -16,11 +16,12 @@ html.android .hdr nav.tabs {
 }
 html.android .hdr nav.tabs button { touch-action: none; flex: 1 1 0; padding: 13px 0 12px; font-size: 15px; letter-spacing: .06em; border-bottom: 0; border-top: 2px solid transparent; }
 html.android .hdr nav.tabs button[aria-current="page"] { border-top-color: var(--gold); }
-html.android main { padding-block: 14px 86px; }
+html.android main { padding-block: 14px calc(86px + env(safe-area-inset-bottom, 0px)); }
 html.android body.kb-open .hdr nav.tabs { display: none; }
 
-/* writing view: fits above the keyboard */
-html.android body.mode-editor main { padding-block: 8px 62px; }
+/* writing view: fits above the keyboard
+   v1.1.11: the bottom tab bar is taller by the iPhone's home-bar space (safe-area-inset-bottom), so main leaves that much room too */
+html.android body.mode-editor main { padding-block: 8px calc(62px + env(safe-area-inset-bottom, 0px)); }
 html.android body.mode-editor.kb-open main { padding-bottom: 6px; }
 html.android body.mode-editor.kb-open .hdr { display: none; }
 html.android .ed-head { gap: 2px 10px; }
@@ -80,3 +81,15 @@ html.android body.plot-mode textarea.paper { font-family: var(--font-ui); }
 
 /* v1.1.8: notes that only make sense on the PC */
 html.android .pc-only { display: none; }
+
+/* v1.1.10: plot mode on the phone — give the text box the room (the badge sits on the crumb line,
+   the save button shares the count line, the read-only title hides while typing) */
+html.android body.plot-mode .ed-head .crumb { order: 0; }
+html.android body.plot-mode .pm-badge { order: 1; margin-left: auto; font-size: 10.5px; padding: 1px 8px; }
+html.android body.plot-mode .ed-head .ch-title { order: 2; }
+html.android body.plot-mode.kb-open .ed-head .ch-title { display: none; }
+html.android body.plot-mode .ed-status { padding-right: 0; flex-wrap: nowrap; min-height: 0; }
+html.android body.plot-mode #edCount { flex: none; }
+html.android body.plot-mode #edSave { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html.android body.plot-mode #pmSave { order: 9; margin-left: auto; flex: none; }
+html.android .wysi { padding: 12px 12px 30px; border-radius: 8px; }
