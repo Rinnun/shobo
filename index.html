@@ -370,7 +370,8 @@ body.in-zone #slimeFloat .mini-slime{filter:drop-shadow(0 0 6px rgba(242,196,67,
         <label class="check"><input type="checkbox" id="sFx"> 打つたびに火花を散らす（色は商店で）</label>
         <label class="check"><input type="checkbox" id="sChDate"> 作品ページの章の一覧に、最後に書いた日時を出す</label>
         <div class="field"><label for="sScene">場面転換の記号</label><input class="input" id="sScene" placeholder="　＊　＊　＊"></div>
-        <p class="note">空白と改行は数えません。貼り付けもダメージになり、消した分はスライムが回復します。mdの取り込みはダメージになりません。</p>
+        <label class="check"><input type="checkbox" id="sCountWs"> 空白と改行も字数に数える</label>
+        <p class="note">オンにすると、執筆画面の字数・スライムへのダメージ・章の一覧・背表紙の太さが、全部この数え方になります（空行も1字）。オフは今までどおり、空白と改行を数えません。貼り付けもダメージになり、消した分はスライムが回復します。mdの取り込みはダメージになりません。</p>
       </div>
       <div class="panel stack" id="sPlotPanel">
         <h3>プロット</h3>

@@ -92,7 +92,14 @@ function withDefaults(d) {
 }
 function dayKey(date) { const s = S.progress ? S.progress.dayStart : 4; const t = new Date((date || new Date()).getTime() - s * 3600e3); return t.getFullYear() + '-' + pad(t.getMonth() + 1) + '-' + pad(t.getDate()); }
 function shiftKey(k, n) { const [y, m, d] = k.split('-').map(Number); const t = new Date(y, m - 1, d + n); return t.getFullYear() + '-' + pad(t.getMonth() + 1) + '-' + pad(t.getDate()); }
-const countChars = s => Array.from(String(s || '').replace(/[\s　]/g, '')).length;
+// v1.1.12: setting「空白と改行も字数に数える」(settings.countWs). The same way counts the shown numbers and the slime damage.
+let COUNT_WS = false;
+const countChars = s => COUNT_WS ? Array.from(String(s || '').replace(/\r/g, '')).length : Array.from(String(s || '').replace(/[\s　]/g, '')).length;
+let countModeSent = null;
+async function syncCountMode() {
+  COUNT_WS = !!(S.progress && S.progress.settings && S.progress.settings.countWs);
+  if (countModeSent !== COUNT_WS && api.setCountMode) { try { await api.setCountMode(COUNT_WS); countModeSent = COUNT_WS; } catch (e) {} }
+}
 
 const chains = new Map();
 function serial(key, fn) { const prev = chains.get(key) || Promise.resolve(); const next = prev.catch(() => {}).then(fn); chains.set(key, next); return next; }
@@ -612,6 +619,7 @@ document.querySelectorAll('nav.tabs button').forEach(b => b.addEventListener('cl
 document.addEventListener('click', e => { const g = e.target.closest('[data-go]'); if (g) { if (g.dataset.go === 'library') S.openWork = null; setView(g.dataset.go); } });
 
 async function refreshWorks(quiet) {
+  await syncCountMode();
   try { S.works = await api.list(); } catch (e) { fileErr(e, '保存先フォルダを読み込めませんでした'); }
   if (quiet) { S.covDirty = true; return; }   // the cover window is open: redraw when it closes
   if (S.view === 'library') renderLibrary();
@@ -2331,6 +2339,7 @@ function renderSettings() {
   $('#sScene').value = P().settings.scene;
   $('#sFx').checked = !!P().settings.fx;
   $('#sChDate').checked = !!P().settings.chDate;
+  $('#sCountWs').checked = !!P().settings.countWs;
   const p = P(); $('#sRoot').textContent = S.root; $('#sGoal').value = p.goal; $('#sDay').value = String(p.dayStart);
   $('#sFont').value = p.settings.font; $('#sSize').value = p.settings.size; $('#sVol').value = p.settings.vol;
   const radio = (name, v) => document.querySelectorAll(`input[name=${name}]`).forEach(r => { r.checked = r.value === v; });
@@ -2352,6 +2361,14 @@ $('#sFont').addEventListener('change', e => { P().settings.font = e.target.value
 $('#sScene').addEventListener('change', e => { P().settings.scene = e.target.value || '　＊　＊　＊'; e.target.value = P().settings.scene; saveProgress(); });
 $('#sFx').addEventListener('change', e => { P().settings.fx = e.target.checked; saveProgress(); });
 $('#sChDate').addEventListener('change', e => { P().settings.chDate = e.target.checked; saveProgress(); });
+// switching the way of counting: the jump in the count is neither damage nor healing (baseLen is reset)
+$('#sCountWs').addEventListener('change', async e => {
+  P().settings.countWs = e.target.checked; saveProgress(true);
+  await syncCountMode();
+  if (loaded.key && !PM.on) baseLen = countChars(edText.value);
+  setCount(); await refreshWorks();
+  toast(e.target.checked ? '空白と改行も字数に数えます' : '空白と改行は字数に数えません');
+});
 $('#sSize').addEventListener('input', e => { P().settings.size = Number(e.target.value); saveProgress(); applySettings(); });
 $('#sVol').addEventListener('input', e => { P().settings.vol = Number(e.target.value); BGM.setVol(P().settings.vol); saveProgress(); });
 $('#sRootOpen').addEventListener('click', () => api.openFolder(null));

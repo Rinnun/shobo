@@ -11,7 +11,10 @@ function sanitize(name) {
   if (s[0] === '.') s = '．' + s.slice(1);
   return s.slice(0, 100);
 }
-const countChars = s => Array.from(String(s || '').replace(/[\s　]/g, '')).length;
+// v1.1.12: setting「空白と改行も字数に数える」(the app sets it through api.setCountMode)
+let countWs = false;
+const countChars = s => countWs ? Array.from(String(s || '').replace(/\r/g, '')).length : Array.from(String(s || '').replace(/[\s　]/g, '')).length;
+const setCountWs = ws => { ws = !!ws; const changed = ws !== countWs; countWs = ws; return changed; };
 const baseName = f => String(f || '無題').replace(CH_RE, '');
 const trimBlank = s => s.replace(/^\s*\n/, '').replace(/\s+$/, '');
 
@@ -79,5 +82,5 @@ function chapterFileText(title, body, opts) {
 }
 
 
-root.MdTools = { CH_RE, sanitize, countChars, baseName, cleanMd, parseMd, toBrMd, chapterFileText };
+root.MdTools = { CH_RE, sanitize, countChars, setCountWs, baseName, cleanMd, parseMd, toBrMd, chapterFileText };
 })(window);

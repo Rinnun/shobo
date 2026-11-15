@@ -389,6 +389,7 @@ window.api = {
   chooseRoot: async () => null,
   openFolder: async () => '',
   openPath: async () => '',
+  setCountMode: async ws => { if (M.setCountWs(ws)) cache.clear(); return !!ws; },
   createWork, renameWork, setCover, setFace, setOrder, setHidden, trashWork,
   version: async () => { try { const i = await App.getInfo(); return { version: i.version, platform: WEB ? 'iPhone版（ウェブ）' : 'Android版' }; } catch { return { version: '?', platform: WEB ? 'iPhone版（ウェブ）' : 'Android版' }; } }, workMarkdown, workPlain,
   readChapter, writeChapter, createChapter, renameChapter, trashChapter,
