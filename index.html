@@ -366,7 +366,11 @@ body.in-zone #slimeFloat .mini-slime{filter:drop-shadow(0 0 6px rgba(242,196,67,
       <div class="panel stack">
         <h3>エディタ</h3>
         <div class="field"><label for="sFont">書体</label><select class="input" id="sFont"><option value="mincho">明朝</option><option value="gothic">ゴシック</option></select></div>
-        <div class="field"><label for="sSize">文字の大きさ</label><input class="input" id="sSize" type="range" min="14" max="26" step="1"></div>
+        <div class="field"><label for="sSize">文字の大きさ <span class="set-val" id="sSizeV"></span></label><input class="input" id="sSize" type="range" min="14" max="26" step="1"></div>
+        <div class="field"><label for="sLh">行間 <span class="set-val" id="sLhV"></span></label><input class="input" id="sLh" type="range" min="1.4" max="2.4" step="0.05"></div>
+        <div class="field"><label>見本</label><div class="lh-preview mincho" id="sPreview">　雨はまだ止まない。窓の外では、街灯の明かりが濡れた石畳ににじんでいた。
+「……本当に、これで終わりなのか」
+　答える者はいない。</div><p class="note">本文の書体・文字の大きさ・行間をそのまま映します。プロットの欄の行間も同じ割合で変わります。</p></div>
         <label class="check"><input type="checkbox" id="sFx"> 打つたびに火花を散らす（色は商店で）</label>
         <label class="check"><input type="checkbox" id="sChDate"> 作品ページの章の一覧に、最後に書いた日時を出す</label>
         <div class="field"><label for="sScene">場面転換の記号</label><input class="input" id="sScene" placeholder="　＊　＊　＊"></div>

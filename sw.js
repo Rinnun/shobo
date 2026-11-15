@@ -1,6 +1,6 @@
 // Keeps the app's own files on the iPhone so it opens without a connection.
 // The writing itself is not here: it lives in IndexedDB and never leaves the phone.
-const VERSION = '1.1.12-6e6ca59b';
+const VERSION = '1.1.13-38b26e08';
 const CORE = 'shobo-core-' + VERSION, FONTS = 'shobo-fonts';
 const CORE_FILES = ["./", "./android.css", "./api-android.js", "./base.css", "./boot-guard.js", "./fonts/fonts.css", "./help/cover.jpg", "./help/memo.jpg", "./help/plot.jpg", "./help/plotfield.jpg", "./help/tabmenu.jpg", "./icon-180.png", "./icon-192.png", "./icon-512.png", "./icon.png", "./index.html", "./manifest.webmanifest", "./mdtools.js", "./renderer.js", "./web-boot.js", "./web-cap.js", "./web.css"];
 

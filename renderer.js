@@ -82,7 +82,7 @@ function defaults() {
     owned: { cover: ['kraft', 'ai', 'enji'], slime: ['green'], bgm: ['none', 'rain'], spark: ['kin'] },
     zone: { count: 0, longest: 0, total: 0 }, zoneDaily: {},
     login: { last: '', streak: 0 }, loginRewards: {}, levelRewards: {},
-    equipped: { slime: 'green', bgm: 'rain', spark: 'kin' }, settings: { font: 'mincho', size: 17, vol: 0.5, scene: '　＊　＊　＊', exHeading: true, exBr: false, fx: !matchMedia('(prefers-reduced-motion: reduce)').matches, plotDefault: 'auto', plotClean: true, plotFolder: 'folder', foeRandom: false }, createdAt: Date.now()
+    equipped: { slime: 'green', bgm: 'rain', spark: 'kin' }, settings: { font: 'mincho', size: 17, lh: 1.95, vol: 0.5, scene: '　＊　＊　＊', exHeading: true, exBr: false, fx: !matchMedia('(prefers-reduced-motion: reduce)').matches, plotDefault: 'auto', plotClean: true, plotFolder: 'folder', foeRandom: false }, createdAt: Date.now()
   };
 }
 function withDefaults(d) {
@@ -1050,7 +1050,19 @@ async function openChapter(wid, cid) {
   S.curWork = wid; S.curCh = cid; lsSet('ss.curWork', wid); lsSet('ss.curCh', cid); loaded.key = null;
   setView('editor');
 }
-function applySettings() { const s = P().settings; edText.className = 'paper ' + (s.font === 'gothic' ? 'gothic' : 'mincho'); edText.style.fontSize = s.size + 'px'; }
+function applySettings() {
+  const s = P().settings; edText.className = 'paper ' + (s.font === 'gothic' ? 'gothic' : 'mincho'); edText.style.fontSize = s.size + 'px';
+  // v1.1.13: line height (本文 1.4–2.4, default 1.95). The plot keeps its old ratio to the text (1.8 : 1.95).
+  const lh = Math.min(2.4, Math.max(1.4, Number(s.lh) || 1.95)), de = document.documentElement.style;
+  de.setProperty('--ed-lh', String(lh)); de.setProperty('--pm-lh', (lh * 1.8 / 1.95).toFixed(3));
+  renderPreview();
+}
+function renderPreview() {
+  const pv = $('#sPreview'); if (!pv || !S.progress) return; const s = P().settings, lh = Number(s.lh) || 1.95;
+  pv.className = 'lh-preview ' + (s.font === 'gothic' ? 'gothic' : 'mincho'); pv.style.fontSize = s.size + 'px';
+  $('#sSizeV').textContent = s.size + 'px';
+  $('#sLhV').textContent = (lh < 1.7 ? '狭い' : lh < 2.05 ? 'ふつう' : '広い') + '（' + lh.toFixed(2) + '）';
+}
 function chapterInfo() { const w = workById(S.curWork); return w ? { w, chs: w.chapters, idx: w.chapters.findIndex(c => c.id === S.curCh) } : null; }
 async function renderEditor() {
   if (SR.open && SR.key !== (PM.on ? 'plot:' + PM.wid : S.curWork + '/' + S.curCh)) srClose(false);
@@ -2341,7 +2353,7 @@ function renderSettings() {
   $('#sChDate').checked = !!P().settings.chDate;
   $('#sCountWs').checked = !!P().settings.countWs;
   const p = P(); $('#sRoot').textContent = S.root; $('#sGoal').value = p.goal; $('#sDay').value = String(p.dayStart);
-  $('#sFont').value = p.settings.font; $('#sSize').value = p.settings.size; $('#sVol').value = p.settings.vol;
+  $('#sFont').value = p.settings.font; $('#sSize').value = p.settings.size; $('#sLh').value = p.settings.lh || 1.95; $('#sVol').value = p.settings.vol; renderPreview();
   const radio = (name, v) => document.querySelectorAll(`input[name=${name}]`).forEach(r => { r.checked = r.value === v; });
   radio('sFoe', p.settings.foeRandom ? 'random' : 'pick');
   if (!api.plotCandidates) $('#sPlotPanel').hidden = true;
@@ -2370,6 +2382,7 @@ $('#sCountWs').addEventListener('change', async e => {
   toast(e.target.checked ? '空白と改行も字数に数えます' : '空白と改行は字数に数えません');
 });
 $('#sSize').addEventListener('input', e => { P().settings.size = Number(e.target.value); saveProgress(); applySettings(); });
+$('#sLh').addEventListener('input', e => { P().settings.lh = Math.round(Number(e.target.value) * 100) / 100; saveProgress(); applySettings(); if (SR.layer) srRefreshSoon(); });
 $('#sVol').addEventListener('input', e => { P().settings.vol = Number(e.target.value); BGM.setVol(P().settings.vol); saveProgress(); });
 $('#sRootOpen').addEventListener('click', () => api.openFolder(null));
 function priceOf(cat, id) { const list = catalog(cat); const it = list.find(x => x.id === id); return it ? it.price : ((RETIRED[cat] || {})[id] || 0); }
@@ -2464,8 +2477,13 @@ if (IS_WEB) {
 }
 if (window.visualViewport) {
   const vv = window.visualViewport;
-  const upd = () => { document.documentElement.style.setProperty('--vvh', vv.height + 'px'); document.body.classList.toggle('kb-open', window.innerHeight - vv.height > 120 || (IS_ANDROID && screen.height - vv.height > screen.height * 0.3)); };
-  vv.addEventListener('resize', upd); upd();
+  // v1.1.13 (iPhone web): Safari lifts the whole page to show the caret while we also shrink the writing view to fit
+  // above the keyboard, so the top went off-screen with a black gap below. In the writing view the page always fits
+  // the visible area, so put it back at the top whenever the keyboard opens or Safari pans.
+  const pin = () => { if (IS_WEB && document.body.classList.contains('mode-editor') && document.body.classList.contains('kb-open') && (window.scrollY || vv.offsetTop)) window.scrollTo(0, 0); };
+  const upd = () => { document.documentElement.style.setProperty('--vvh', vv.height + 'px'); document.body.classList.toggle('kb-open', window.innerHeight - vv.height > 120 || (IS_ANDROID && screen.height - vv.height > screen.height * 0.3)); pin(); requestAnimationFrame(pin); };
+  vv.addEventListener('resize', upd); vv.addEventListener('scroll', pin); upd();
+  if (IS_WEB) document.addEventListener('focusin', e => { if (e.target === edText || (e.target.closest && e.target.closest('#pmEd'))) { setTimeout(pin, 60); setTimeout(pin, 350); } });
 }
 if (api.onBack) api.onBack(() => {
   if (dlg.open) { closeDlg(); return; }
