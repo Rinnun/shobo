@@ -412,3 +412,30 @@ body.plot-mode textarea.paper:focus{border-color:#9fb3cb;box-shadow:0 0 0 3px rg
 .lh-preview.mincho{font-family:var(--font-mincho)}
 .lh-preview.gothic{font-family:var(--font-ui)}
 .set-val{color:var(--gold);margin-left:8px;font-variant-numeric:tabular-nums}
+
+/* ---------- v1.1.14: fresh, sky-like covers (小松竹さんのリクエスト) ---------- */
+.sp-sora{background:radial-gradient(ellipse at 30% 18%,rgba(255,255,255,.22),transparent 45%),linear-gradient(90deg,#5aaedd,#87cefa 45%,#5cb0df);color:#123a68}
+.sp-hakka{background:radial-gradient(ellipse at 30% 18%,rgba(255,255,255,.18),transparent 45%),linear-gradient(90deg,#3d8c7c,#93d9c6 45%,#3f8e7e);color:#0f3029}
+/* 青空: summer sky with drifting clouds, title on a light slip */
+.sp-aozora{background:
+  radial-gradient(ellipse 70% 7% at 28% 16%,#fff 0 55%,transparent 62%),radial-gradient(ellipse 55% 6% at 62% 13%,#fff 0 50%,transparent 60%),
+  radial-gradient(ellipse 80% 8% at 70% 44%,#fff 0 52%,transparent 60%),radial-gradient(ellipse 50% 6% at 40% 47%,rgba(255,255,255,.9) 0 50%,transparent 60%),
+  radial-gradient(ellipse 75% 7% at 34% 78%,#fff 0 52%,transparent 60%),radial-gradient(ellipse 45% 5% at 72% 81%,rgba(255,255,255,.9) 0 50%,transparent 60%),
+  linear-gradient(to bottom,#1f6fc9,#4f9fe3 45%,#a9dbf6);color:#123a68;--band:linear-gradient(90deg,#9fb4c9,#f4f8fc 50%,#9fb4c9)}
+.sp-aozora .sp-title{background:rgba(255,255,255,.78);padding:6px 2px;border-radius:2px;box-shadow:0 1px 2px rgba(0,40,90,.25)}
+.fcover.sp-aozora .fc-t{background:rgba(255,255,255,.78);color:#123a68;padding:8px 5px;border-radius:2px}
+/* ラムネ: pale aqua glass with rising bubbles */
+.sp-ramune{background:
+  radial-gradient(circle at 30% 22%,transparent 0 1.6px,rgba(255,255,255,.85) 1.6px 2.4px,transparent 2.6px),radial-gradient(circle at 66% 36%,transparent 0 2.2px,rgba(255,255,255,.8) 2.2px 3px,transparent 3.2px),
+  radial-gradient(circle at 44% 58%,transparent 0 1.3px,rgba(255,255,255,.85) 1.3px 2px,transparent 2.2px),radial-gradient(circle at 70% 72%,transparent 0 1.8px,rgba(255,255,255,.8) 1.8px 2.6px,transparent 2.8px),
+  radial-gradient(circle at 34% 86%,transparent 0 2.4px,rgba(255,255,255,.8) 2.4px 3.2px,transparent 3.4px),
+  linear-gradient(90deg,rgba(255,255,255,0) 20%,rgba(255,255,255,.35) 30%,rgba(255,255,255,0) 40%),
+  linear-gradient(90deg,#3fa9be,#a6e6ef 45%,#43acc1);color:#0b3a46;--band:linear-gradient(90deg,#8aa7ae,#eef7f9 50%,#8aa7ae)}
+.credits{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:12px 0 0;padding-top:10px;border-top:1px solid var(--line);font-size:13.5px}
+.credits dt{color:var(--muted)}
+.credits dd{margin:0;color:var(--gold);font-family:var(--font-mincho);font-weight:700;letter-spacing:.06em}
+/* title colours on the light / sky covers (the default title is gold) */
+.sp-sora .sp-title,.fcover.sp-sora .fc-t{color:#123a68;text-shadow:0 1px 0 rgba(255,255,255,.4)}
+.sp-hakka .sp-title,.fcover.sp-hakka .fc-t{color:#0f3029;text-shadow:0 1px 0 rgba(255,255,255,.35)}
+.sp-aozora .sp-title,.fcover.sp-aozora .fc-t{color:#123a68;text-shadow:none}
+.sp-ramune .sp-title,.fcover.sp-ramune .fc-t{color:#0b3a46;text-shadow:0 1px 0 rgba(255,255,255,.4)}

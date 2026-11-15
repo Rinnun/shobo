@@ -27,9 +27,11 @@ const COVERS = [
   { id: 'ruri', name: '瑠璃', price: 150, grp: 'plain' }, { id: 'asagi', name: '浅葱', price: 150, grp: 'plain' }, { id: 'fukamidori', name: '深緑', price: 150, grp: 'plain' },
   { id: 'wakakusa', name: '若草', price: 150, grp: 'plain' }, { id: 'ebi', name: '葡萄', price: 150, grp: 'plain' }, { id: 'usubeni', name: '薄紅', price: 150, grp: 'plain' },
   { id: 'kurikawa', name: '栗皮', price: 150, grp: 'plain' }, { id: 'nibi', name: '鈍色', price: 150, grp: 'plain' },
+  { id: 'sora', name: '空色', price: 150, grp: 'plain' }, { id: 'hakka', name: '薄荷', price: 150, grp: 'plain' },
   { id: 'seigaiha', name: '青海波', price: 400, grp: 'deco' }, { id: 'watoji', name: '和綴じ', price: 400, grp: 'deco' }, { id: 'kosho', name: '古書', price: 500, grp: 'deco' },
   { id: 'kinpaku', name: '金箔', price: 600, grp: 'deco' }, { id: 'madousho', name: '魔導書', price: 700, grp: 'deco' },
-  { id: 'seizu', name: '星図', price: 700, grp: 'deco' }, { id: 'ryurin', name: '竜鱗', price: 900, grp: 'deco' }];
+  { id: 'seizu', name: '星図', price: 700, grp: 'deco' }, { id: 'ryurin', name: '竜鱗', price: 900, grp: 'deco' },
+  { id: 'aozora', name: '青空', price: 600, grp: 'deco' }, { id: 'ramune', name: 'ラムネ', price: 600, grp: 'deco' }];
 const SLIMES = [
   { id: 'green', name: '若葉', price: 0, grp: 'slime', c: ['#5cc46b', '#c9f2c4', '#22703a'] },
   { id: 'mizu', name: '水色', price: 120, grp: 'slime', c: ['#5bb8e8', '#d4f0ff', '#1d5c88'] },
@@ -39,7 +41,9 @@ const SLIMES = [
   { id: 'gold', name: '黄金', price: 800, grp: 'slime', c: ['#e2b23a', '#fff1b8', '#86590a'] }];
 // looks only: a monster is fought exactly like a slime (HP = the day's goal, same reward)
 const MONSTERS = [
+  { id: 'ichikaku', name: '一角ウサギ', price: 1500, grp: 'monster', desc: '額に一本の角をもつウサギ。すばしこい' },
   { id: 'kelpie', name: 'ケルピー', price: 2000, grp: 'monster', desc: '水辺にあらわれる馬。たてがみは水草' },
+  { id: 'mikeguma', name: '三毛クマ', price: 2000, grp: 'monster', desc: '三色の毛皮を持つクマ。ときどき、鳴き声が三重に聞こえる。' },
   { id: 'griffin', name: 'グリフォン', price: 2500, grp: 'monster', desc: '鷲の頭と翼、獅子の体' },
   { id: 'dragon', name: 'ドラゴン', price: 3000, grp: 'monster', desc: '翼ある赤き竜' }];
 const FOES = [...SLIMES, ...MONSTERS];
@@ -186,6 +190,131 @@ function drawSlime(ctx, W, H, { color, t, hit, dead }) {
 }
 // Pixel art for the monsters (40×30 cells). One letter per cell; "." is empty. Colours per letter in MON_PAL.
 const MON_ART = {
+  // v1.1.14: 一角ウサギ (from 鱗雲さん's reference pixel art) and 三毛クマ (after 小松竹さん's three bears) — pc-tools/monster-art/v1114/
+  ichikaku: [
+    "........................................",
+    "........................................",
+    "........................................",
+    ".....................OOOO...............",
+    "....................OWWWO...............",
+    "...................OOWWWO...............",
+    "..................OWWWWOO...............",
+    ".................OWWPPPO................",
+    ".................OWWPPO..OOOO...........",
+    "........OO......OWWPPPOOOWWWO...........",
+    "........OgO.....OWWPOOWWWWWWO...........",
+    "........OGgO...OWWWPOWWWPPPOO...........",
+    ".........OGGO.OWWWOOWWWPPPOO............",
+    "..........OGGOOWWWOWPPPPPOO.............",
+    "..........OGGGOWOOWWPPOOO...............",
+    "...........OGWWWWWWOPOO.................",
+    "..........OWWWWWWWWOO...................",
+    ".........OWWWEWWWWO..OOO.O..............",
+    "........OWWWWWWWWWO.OWWWOWO.............",
+    "........OPWWWWWWWWOOWWWWWWO.............",
+    "........OWWWWWWWSSWWWWWWWWWO.OO.........",
+    ".........OOWWWWSWWWWWWWWWWWOOWWO........",
+    "...........OSSSWWWWWWWWWWWWWOWWO........",
+    "...........OSWWWWWWWWSWWWWWWOSSO........",
+    "...........OSWWWWWWWSWWWWWWWSOO.........",
+    "............OSWWWSSSSWWWWWWWSO..........",
+    "............OSOSWSSSSWWWWWWSSO..........",
+    "...........OOOOOWSOOSSSSSSSSO...........",
+    "...........OWWOWWSO.OOWWWSSOO...........",
+    "...........OOOOOOO..OOOOOOOO............"],
+  ichikaku_dead: [
+    "........................................",
+    "........................................",
+    "........................................",
+    "...........OOOOOOO..OOOOOOOO............",
+    "...........OWWOWWSO.OOWWWSSOO...........",
+    "...........OOOOOWSOOSSSSSSSSO...........",
+    "............OSOSWSSSSWWWWWWSSO..........",
+    "............OSWWWSSSSWWWWWWWSO..........",
+    "...........OSWWWWWWWSWWWWWWWSOO.........",
+    "...........OSWWWWWWWWSWWWWWWOSSO........",
+    "...........OSSSWWWWWWWWWWWWWOWWO........",
+    ".........OOWWWWSWWWWWWWWWWWOOWWO........",
+    "........OWWWWWWWSSWWWWWWWWWO.OO.........",
+    "........OPWWWWWWWWOOWWWWWWO.............",
+    "........OWWWXWXWWWO.OWWWOWO.............",
+    ".........OWWWXWWWWO..OOO.O..............",
+    "..........OWXWXWWWWOO...................",
+    "...........OGWWWWWWOPOO.................",
+    "..........OGGGOWOOWWPPOOO...............",
+    "..........OGGOOWWWOWPPPPPOO.............",
+    ".........OGGO.OWWWOOWWWPPPOO............",
+    "........OGgO...OWWWPOWWWPPPOO...........",
+    "........OgO.....OWWPOOWWWWWWO...........",
+    "........OO......OWWPPPOOOWWWO...........",
+    ".................OWWPPO..OOOO...........",
+    ".................OWWPPPO................",
+    "..................OWWWWOO...............",
+    "...................OOWWWO...............",
+    "....................OWWWO...............",
+    ".....................OOOO..............."],
+  mikeguma: [
+    "........................................",
+    "............OOO..........OOO............",
+    "...........OyyyO........OyyyO...........",
+    ".....OOO..OyYYYyO.OOOO.OyYYYyO..OOO.....",
+    "....OCyCO.OyIIIYOOyywwOOyIIIYO.OCyCO....",
+    "...OyYYYyOOZYIIYyyYWWWwwWIIWVOOwWWWwO...",
+    "...OyYYYYO.OZYYYYYYWWWWWWWWVO.OgGGGGO...",
+    "...OZYYYYO..OyYYYYYWWWWWWWWO..OgGGGHO...",
+    "....OZYYYyO.OyYYYeYWWWWeWWWO.OgGGGHO....",
+    ".....OZYYYyOyYYYYKYWWWWKWWWwOgGGGHO.....",
+    "......OyYYYyYYYYYYWWWWWWWWWWgGGGGO......",
+    "......OZYYYYYYYYWWWKKKWWWWWWGGGGHO......",
+    ".......OZYYYYYYYWWWWKWWWWWWWGGGHO.......",
+    "........OZYYYYYWWWKKKKKWWWWGGGHO........",
+    ".........OyYYYYWWWKRTRKWWWGGGGO.........",
+    ".........OZYYYWWWWKRRRKWWGGGGHO.........",
+    "..........OZYYWWWWKTRTKWGGGGHO..........",
+    "...........OyYWWWWKKKKKWGGGGO...........",
+    "..........OyYWWWWWWWWWWWGGGGgO..........",
+    ".........OyYYWWWWWWWWWWWGGGGGgO.........",
+    ".........OyYYWWWWWWWWWWWGGGGGGO.........",
+    ".........OyYYWWWWWWWWWWWGGGGGGO.........",
+    ".........OZYYWWWWWWWWWWWGGGGGHO.........",
+    "..........OZWWWWWWWWWWWWWGGGHO..........",
+    "...........OwWWWWWWWWWWWWGGGO...........",
+    "..........OwWWWWWWWWWWWWWGGGgO..........",
+    "..........OwWWWWWWVVVVWWWGGGGO..........",
+    "..........OVWWWWWWOOOOwWWGGGHO..........",
+    "...........OVOVOVVO..OVVVOHOO...........",
+    "............OOOOOO....OOOOOO............"],
+  mikeguma_dead: [
+    "........................................",
+    "........................................",
+    "........................................",
+    "........................................",
+    "........................................",
+    "........................................",
+    "........................................",
+    "........................................",
+    ".O.O........OOOO........OOOO........O.O.",
+    "OYOYO......OOWOWO......OWOWOO......OGOGO",
+    "OYYYOO....OOOWWWOO....OOWWWOOO....OOGGGO",
+    "OYYOOYO..OYOOWWOOWO..OWOOWWOOGO..OGOOGGO",
+    "OYYOYYO..OYYOWWOWWO..OWWOWWOGGO..OGGOGGO",
+    ".OYOYYYOOYYYOOWOWWWOOWWWOWOOGGGOOGGGOGO.",
+    "..OYYYYYYYYYYOOWWWWWWWWWWOOGGGGGGGGGGO..",
+    "...OYYYYYYYYZO.OWWWWWWWWVO.OGGGGGGGGHO..",
+    "...OYKYYYYKYZO.OWKWWWWKWVO.OGKGGGGKGHO..",
+    "...OYYYYYYYYZO.OWWWWWWWWVO.OGGGGGGGGHO..",
+    "...OYYYKKYYYZO.OWWWKKWWWVO.OGGGKKGGGHO..",
+    "...OYYKRRKYYZO.OWWKRRKWWVO.OGGKRRKGGHO..",
+    "...OYYKRRKYYZO.OWWKRRKWWVO.OGGKRRKGGHO..",
+    "...OYYKPPKYYZO.OWWKPPKWWVO.OGGKPPKGGHO..",
+    "...OYYYKKYYYZO.OWWWKKWWWVO.OGGGKKGGGHO..",
+    "...OYYYYYYYYZO.OWWWWWWWWVO.OGGGGGGGGHO..",
+    "...OYYYYYYYYZO.OWWWWWWWWVO.OGGGGGGGGHO..",
+    "...OYYYYYYYYZO.OWWWWWWWWVO.OGGGGGGGGHO..",
+    "...OYYYYYYYYZO.OWWWWWWWWVO.OGGGGGGGGHO..",
+    "...OYYYOOYYZO..OWWWOOWWVO..OGGGOOGGHO...",
+    "...OYYYOOYYZO..OWWWOOWWVO..OGGGOOGGHO...",
+    "...OYOYOOYOZO..OWOWOOWOVO..OGOGOOGOHO..."],
   kelpie: [
     "........................................",
     "............O...........................",
@@ -375,6 +504,9 @@ const MON_ART = {
 };
 const MON_PAL = {"kelpie": {"O": "#071a22", "B": "#2f6f86", "b": "#5aa6bd", "D": "#173e4e", "M": "#2f8a4e", "m": "#1c5a32", "K": "#0d1418", "E": "#d6f6ff", "~": "#7fd4ee", "X": "#0d1418"}, "griffin": {"O": "#1d1308", "T": "#c08a3e", "t": "#8a5d22", "C": "#efe6cf", "c": "#bfb294", "F": "#7a5428", "f": "#b98a4a", "G": "#e2b23a", "g": "#a07818", "H": "#3a2a12", "D": "#4a2e12", "E": "#1b1408", "K": "#5a3f10", "L": "#d2a865", "l": "#e8c48a", "P": "#7a4e22", "p": "#a8743a", "Z": "#3e2610", "n": "#efe3c4", "Q": "#5e3c1a", "q": "#8a5e2c"}, "dragon": {"O": "#240a07", "R": "#b3352b", "r": "#e06a4c", "D": "#6a1712", "Y": "#e7b56a", "y": "#b9853f", "W": "#7c2621", "w": "#4a120e", "H": "#efe3c4", "E": "#ffd23a", "X": "#2a0c08"}, "kelpie_dead": {"O": "#1a0f08", "M": "#9b4a24", "m": "#d4844e", "N": "#5e2a12", "B": "#efe3c4", "b": "#fff7e6", "J": "#b9a988", "G": "#2f8a4e", "g": "#5cc070", "H": "#1c5a32", "P": "#d6d0c4", "p": "#f2eee6", "Q": "#9c968a", "~": "#bdb6aa"}};
 MON_PAL.griffin_dead = MON_PAL.griffin; MON_PAL.dragon_dead = MON_PAL.dragon;
+MON_PAL.ichikaku = MON_PAL.ichikaku_dead = {"O": "#3e2a27", "W": "#f4e6d6", "S": "#b39b90", "P": "#d48785", "p": "#dc9696", "G": "#c4923c", "g": "#fade96", "E": "#7a1a1e", "X": "#3e2a27"};
+MON_PAL.mikeguma = {"O": "#2b170f", "W": "#f6eddb", "w": "#fffaf0", "V": "#d8cbb2", "Y": "#a89234", "y": "#c2ad4c", "Z": "#7a6a22", "G": "#615e5e", "g": "#7c7979", "H": "#454343", "I": "#f6eddb", "C": "#fffaf0", "K": "#24140e", "e": "#fffaf0", "R": "#be3c32", "T": "#fffaf0"};
+MON_PAL.mikeguma_dead = {"O": "#2b1a12", "W": "#fbfaf6", "V": "#c9c6dc", "Y": "#a39436", "Z": "#867a2a", "G": "#6c6c6e", "H": "#565659", "K": "#24140e", "R": "#c8505a", "P": "#f09aa2"};
 function drawMonster(ctx, W, H, { id, t, hit, dead }) {
   ctx.clearRect(0, 0, W, H);
   const key = dead ? id + '_dead' : id; const g = MON_ART[key], pal = MON_PAL[key]; if (!g) return;
@@ -382,7 +514,10 @@ function drawMonster(ctx, W, H, { id, t, hit, dead }) {
   const cell = Math.max(1, Math.floor(Math.min(W / cols, H / rows)));
   const ox = Math.round((W - cols * cell) / 2 + (hit ? Math.sin(t / 18) * cell * 0.6 : 0)), oy = H - rows * cell;
   ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(W / 2, H - cell * 0.6, cols * cell * 0.4, cell * 1.1, 0, 0, Math.PI * 2); ctx.fill();
-  for (let y = 0; y < rows; y++) { const row = g[y]; for (let x = 0; x < cols; x++) { const ch = row[x]; if (ch === '.') continue; ctx.fillStyle = pal[ch] || '#000'; ctx.fillRect(ox + x * cell, oy + y * cell, cell, cell); } }
+  // v1.1.14: the defeated 三毛クマ (three little bears) keeps shivering, each bear on its own beat
+  const amp = Math.max(1, Math.round(cell * 0.35));
+  const shiver = dead && id === 'mikeguma' ? x => { const k = x <= 12 ? 0 : x <= 26 ? 1 : 2; return [0, 1, 0, -1][(Math.floor((t || 0) / 55) + k * 3) % 4] * amp; } : null;
+  for (let y = 0; y < rows; y++) { const row = g[y]; for (let x = 0; x < cols; x++) { const ch = row[x]; if (ch === '.') continue; ctx.fillStyle = pal[ch] || '#000'; ctx.fillRect(ox + x * cell + (shiver ? shiver(x) : 0), oy + y * cell, cell, cell); } }
   if (hit) { ctx.globalCompositeOperation = 'source-atop'; ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fillRect(0, 0, W, H); ctx.globalCompositeOperation = 'source-over'; }
 }
 function drawFoe(ctx, W, H, o) { if (isMonster(o.color)) drawMonster(ctx, W, H, { ...o, id: o.color }); else drawSlime(ctx, W, H, o); }
@@ -396,7 +531,7 @@ class SlimeView {
     if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; this.ctx.imageSmoothingEnabled = false; }
   }
   draw(t) { this.fit(); drawFoe(this.ctx, this.cv.width, this.cv.height, { color: this.color, t, hit: t < this.hitUntil, dead: this.dead }); }
-  loop(t) { if (this.cv.offsetParent !== null) this.draw(t); requestAnimationFrame(this.loop); }
+  loop(t) { if (!this.cv.isConnected) return; if (this.cv.offsetParent !== null) this.draw(t); requestAnimationFrame(this.loop); }
   hit() { this.hitUntil = performance.now() + 180; }
 }
 const mini = new SlimeView($('#miniSlime')), big = new SlimeView($('#bigSlime'));
@@ -470,7 +605,7 @@ function maybeKill() {
   p.kills[k] = reward; p.coins += reward; saveProgress(true); renderHeader(); renderHP();
   const foe = foeToday();
   openDlg(`<div class="dlg celebrate"><canvas id="cSl" width="192" height="144" style="width:144px;height:108px;image-rendering:pixelated;margin:0 auto;display:block"></canvas><h3>討伐成功</h3><p style="margin:0">${esc(foeName(foe))}を倒しました。${streak > 1 ? `<br><span class="muted small">${streak}日連続</span>` : ''}</p><div><span class="reward"><span class="coin"></span>+${reward} コイン</span></div><div><button class="btn gold" data-close>やった</button></div></div>`,
-    d => { const v = new SlimeView(d.querySelector('#cSl'), { static: true }); v.color = foe; v.dead = true; v.draw(0); requestAnimationFrame(() => v.draw(0)); });
+    d => { const v = new SlimeView(d.querySelector('#cSl'), { static: foe !== 'mikeguma' }); v.color = foe; v.dead = true; v.draw(0); requestAnimationFrame(() => v.draw(0)); });
 }
 
 
@@ -690,7 +825,7 @@ function fitTitleBox(o) {
 }
 // measurements made before the book fonts arrive are thrown away
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { tfCache.clear(); if (S.view === 'library') renderLibrary(); }).catch(() => {});
-const LABEL_TITLE = ['seigaiha', 'watoji', 'kosho', 'ryurin'];
+const LABEL_TITLE = ['seigaiha', 'watoji', 'kosho', 'ryurin', 'aozora'];
 function spineHTML(id, title, w, h, brk) {
   id = COVERS.some(c => c.id === id) ? id : 'kraft';
   const fs = Math.max(9, Math.min(16, Math.round((w - 12) * 0.62)));
@@ -704,7 +839,7 @@ function spineHTML(id, title, w, h, brk) {
 }
 // Front cover made from the cover design: same colour / pattern, gold double frame, the title.
 // face: 'ro' = vertical title, bound on the right / 'lo' = horizontal title, bound on the left
-const COVER_LABEL = ['watoji', 'seigaiha', 'ryurin', 'seizu'];
+const COVER_LABEL = ['watoji', 'seigaiha', 'ryurin', 'seizu', 'aozora'];
 function coverHTML(id, title, w, face, brk) {
   id = COVERS.some(c => c.id === id) ? id : 'kraft'; face = face === 'lo' ? 'lo' : 'ro';
   const v = face === 'ro', H = w * 4 / 3; let t = '';
