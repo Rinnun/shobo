@@ -93,3 +93,12 @@ html.android body.plot-mode #edCount { flex: none; }
 html.android body.plot-mode #edSave { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 html.android body.plot-mode #pmSave { order: 9; margin-left: auto; flex: none; }
 html.android .wysi { padding: 12px 12px 30px; border-radius: 8px; }
+
+/* v1.1.15: phone writing view — the count line is always two rows (count / save state + zone), so typing never
+   changes its height and the text box stays still */
+html.android body:not(.plot-mode) .ed-status { display: grid; grid-template-columns: auto auto 1fr; grid-template-rows: 20px 22px; align-items: center; column-gap: 8px; row-gap: 2px; white-space: nowrap; }
+html.android body:not(.plot-mode) #edCount { grid-column: 1 / -1; grid-row: 1; }
+html.android body:not(.plot-mode) #edSave { grid-column: 1; grid-row: 2; }
+html.android body:not(.plot-mode) #zonePill { grid-column: 2; grid-row: 2; justify-self: start; line-height: 18px; }
+html.android body:not(.plot-mode) .ed-status > * { line-height: 20px; }
+html.android body:not(.plot-mode) .ed-status .spacer { display: none; }

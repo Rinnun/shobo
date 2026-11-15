@@ -439,3 +439,14 @@ body.plot-mode textarea.paper:focus{border-color:#9fb3cb;box-shadow:0 0 0 3px rg
 .sp-hakka .sp-title,.fcover.sp-hakka .fc-t{color:#0f3029;text-shadow:0 1px 0 rgba(255,255,255,.35)}
 .sp-aozora .sp-title,.fcover.sp-aozora .fc-t{color:#123a68;text-shadow:none}
 .sp-ramune .sp-title,.fcover.sp-ramune .fc-t{color:#0b3a46;text-shadow:0 1px 0 rgba(255,255,255,.4)}
+
+/* v1.1.15: the count line below the text box keeps one height (it used to wrap/unwrap as 「保存済み 01:58」↔「未保存」
+   or the zone pill changed, which made the text box jump). PC: one row, the hint keys shrink with "…". */
+html:not(.android) .ed-status{flex-wrap:nowrap;white-space:nowrap;height:24px;line-height:22px}
+html:not(.android) .ed-status > *{line-height:20px}
+html:not(.android) body.plot-mode .ed-status{height:34px}
+html:not(.android) body.plot-mode #edSave{min-width:0;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto}
+html:not(.android) .ed-status > *{flex:none}
+html:not(.android) .ed-status .spacer{flex:1 1 0;min-width:0}
+html:not(.android) .ed-status .hint-key{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+html:not(.android) #edSave{min-width:7.2em}
