@@ -48,7 +48,7 @@ const MONSTERS = [
   { id: 'dragon', name: 'ドラゴン', price: 3000, grp: 'monster', desc: '翼ある赤き竜' }];
 const FOES = [...SLIMES, ...MONSTERS];
 // items no longer sold: still priced, so coins recomputed after a merge stay right for anyone who bought them
-const RETIRED = { cover: { sakura: 150, ichimatsu: 300, yozora: 300, sumi: 500 }, slime: { metal: 500, niji: 1200 } };
+const RETIRED = { cover: { sakura: 150, ichimatsu: 300, yozora: 300, sumi: 500 }, slime: { metal: 500, niji: 1200 }, bgm: { journey: 100 } };
 const GROUPS = { plain: ['単色', '生成り・藍・えんじは初めから持っています'], deco: ['装丁', '柄や飾りのある特別な装丁'], slime: ['スライム', '色違い6種'], monster: ['モンスター', '見た目だけ。強さも報酬もスライムと同じです'] };
 const isMonster = id => MONSTERS.some(m => m.id === id);
 const foeName = id => { const m = MONSTERS.find(x => x.id === id); if (m) return m.name; return (SLIMES.find(x => x.id === id) || SLIMES[0]).name + 'スライム'; };
@@ -66,9 +66,13 @@ const CATS = ['cover', 'slime', 'bgm', 'spark'];
 const BGMS = [
   { id: 'none', name: '無音', price: 0, desc: '静かに書きたいときに。' },
   { id: 'rain', name: '雨の書斎', price: 0, desc: '雨音と、ときどきピアノ。' },
-  { id: 'morning', name: '朝の小径', price: 200, desc: 'やわらかいアルペジオ。' },
-  { id: 'stars', name: '星灯り', price: 300, desc: 'ゆっくり鳴るベルの音。' },
-  { id: 'journey', name: '旅立ち', price: 400, desc: '8ビット風の冒険曲。' }];
+  { id: 'morning', name: '朝の小径', price: 100, desc: 'やわらかいアルペジオ。' },
+  { id: 'stars', name: '星灯り', price: 100, desc: 'ゆっくり鳴るベルの音。' },
+  { id: 'fire', name: '暖炉の書斎', price: 100, desc: '薪のはぜる音と、やわらかい和音。' },
+  { id: 'forest', name: '夜の森', price: 100, desc: 'スズムシやコオロギの声と、夜風。' },
+  { id: 'clock', name: '振り子時計', price: 100, desc: '振り子の音と、オルゴールのワルツ。' }];
+// v1.1.16: BGM は一律100コインに。前の値段で買った曲は、差額を一度だけ返す（bgmPriceFix）
+const BGM_OLD_PRICE = { morning: 200, stars: 300, journey: 400 };
 const TITLES = [[1, '見習い筆耕'], [5, '駆け出しの書き手'], [10, '物語の旅人'], [20, '言葉の狩人'], [30, '熟練の綴り手'], [45, '万字の賢者'], [65, '物語の守り人'], [90, '伝説の文豪']];
 const levelOf = t => Math.floor((Math.sqrt(1 + 8 * Math.max(0, t) / 500) - 1) / 2) + 1;
 const titleOf = lv => { let t = TITLES[0][1]; for (const [l, n] of TITLES) if (lv >= l) t = n; return t; };
@@ -92,6 +96,7 @@ function defaults() {
 function withDefaults(d) {
   const b = defaults(); d = d || {};
   if (d.equipped && d.equipped.slime && !FOES.some(f => f.id === d.equipped.slime)) d = { ...d, equipped: { ...d.equipped, slime: 'green' } };
+  if (d.equipped && d.equipped.bgm && !BGMS.some(f => f.id === d.equipped.bgm)) d = { ...d, equipped: { ...d.equipped, bgm: 'rain' } };
   return { ...b, ...d, owned: { ...b.owned, ...(d.owned || {}) }, equipped: { ...b.equipped, ...(d.equipped || {}) }, settings: { ...b.settings, ...(d.settings || {}) }, daily: d.daily || {}, kills: d.kills || {}, zone: { ...b.zone, ...(d.zone || {}) }, zoneDaily: d.zoneDaily || {}, dev: d.dev || {}, login: { ...b.login, ...(d.login || {}) }, loginRewards: d.loginRewards || {}, levelRewards: d.levelRewards || {} };
 }
 function dayKey(date) { const s = S.progress ? S.progress.dayStart : 4; const t = new Date((date || new Date()).getTime() - s * 3600e3); return t.getFullYear() + '-' + pad(t.getMonth() + 1) + '-' + pad(t.getDate()); }
@@ -741,6 +746,7 @@ async function setView(v) {
   if (S.view === 'editor' && v !== 'editor' && PM.on && PM.dirty && !await pmLeaveOK('ほかの画面へ移る')) return;
   closeTabCtx();
   if (S.view === 'editor' && v !== 'editor') { if (SR.open) srClose(false); saveChapter(); memoSave(); closePicker(); }
+  if (v !== 'shop' && PV.id) PV.stop(true);
   S.view = v; lsSet('ss.view', v);
   document.querySelectorAll('nav.tabs button').forEach(b => b.setAttribute('aria-current', b.dataset.view === v ? 'page' : 'false'));
   for (const id of ['library', 'editor', 'battle', 'shop', 'settings']) $('#v-' + id).hidden = id !== v;
@@ -2449,7 +2455,7 @@ function renderShop() {
   document.querySelectorAll('#shopSeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.cat === cat));
   const list = catalog(cat);
   const owned = p.owned[cat];
-  $('#shopHint').textContent = { cover: '買った装丁は、書斎の作品ページで背表紙を' + (IS_ANDROID ? '長押し' : 'クリック') + 'すると選べます。', slime: '選んだ討伐対象が毎日あらわれます。設定で「持っているものから毎日ランダム」にもできます。', bgm: '買った曲を選んで、上の「♪ BGM」で再生します。', spark: '打つたびに散る火花の色です。ゾーンに入ると、選んだ色にほかの色が混ざって華やかになります。' }[cat];
+  $('#shopHint').textContent = { cover: '買った装丁は、書斎の作品ページで背表紙を' + (IS_ANDROID ? '長押し' : 'クリック') + 'すると選べます。', slime: '選んだ討伐対象が毎日あらわれます。設定で「持っているものから毎日ランダム」にもできます。', bgm: '「▶ 試聴」で20秒ほど聞けます。買った曲を選んで、上の「♪ BGM」で再生します。', spark: '打つたびに散る火花の色です。ゾーンに入ると、選んだ色にほかの色が混ざって華やかになります。' }[cat];
   let grp = null;
   $('#goods').innerHTML = list.map(it => {
     const head = it.grp && it.grp !== grp && GROUPS[it.grp] ? `<div class="grp-h"><h3>${GROUPS[it.grp][0]}</h3><span class="muted small">${GROUPS[it.grp][1]}</span></div>` : ''; grp = it.grp;
@@ -2458,15 +2464,17 @@ function renderShop() {
     if (cat === 'cover') pv = spineHTML(it.id, it.name, 34, 88);
     else if (cat === 'slime') pv = `<canvas width="96" height="72" data-sl="${it.id}"${isMonster(it.id) ? ' class="mon"' : ''}></canvas>`;
     else if (cat === 'spark') pv = `<div class="spark-pv">${[3, 5, 2, 4, 3].map((s, i) => `<i style="width:${s * 2}px;height:${s * 2}px;background:${it.c};box-shadow:0 0 ${s * 3}px ${it.c};opacity:${0.55 + i % 2 * 0.4}"></i>`).join('')}</div>`;
-    else pv = `<div class="wave">${Array.from({ length: 12 }, (_, i) => `<i style="height:${it.id === 'none' ? 4 : 8 + Math.round(Math.abs(Math.sin((i + 1) * (it.id.length + 1))) * 28)}px"></i>`).join('')}</div>`;
+    else pv = `<div class="wave">${Array.from({ length: 12 }, (_, i) => `<i style="height:${it.id === 'none' ? 4 : 8 + Math.round(Math.abs(Math.sin((i + 1) * (it.id.length + 1))) * 28)}px;animation-delay:${-(i * 0.37 % 1).toFixed(2)}s"></i>`).join('')}</div>`
+      + (it.id === 'none' ? '' : `<button class="pv-play" data-pv="${it.id}" aria-pressed="${PV.id === it.id}">${PV.id === it.id ? '■ 止める' : '▶ 試聴'}</button>`);
     const act = !own ? `<button class="btn sm gold" data-buy="${it.id}" ${p.coins < it.price ? 'disabled' : ''}><span class="coin"></span> ${fmt(it.price)}で買う</button>`
       : cat === 'cover' ? `<span class="muted small">所持</span>`
         : on ? `<span class="small" style="color:var(--gold)">使用中</span>` : `<button class="btn sm" data-eq="${it.id}">使う</button>`;
-    return head + `<div class="good ${on ? 'on' : ''}"><div class="pv">${pv}</div><div class="nm">${esc(it.name)}</div>${it.desc ? `<div class="muted small">${esc(it.desc)}</div>` : ''}<div class="pr">${own ? '' : `<span class="coin"></span>${fmt(it.price)}`}</div>${act}</div>`;
+    return head + `<div class="good ${on ? 'on' : ''}"><div class="pv${cat === 'bgm' ? ' bgm' : ''}${cat === 'bgm' && PV.id === it.id ? ' playing' : ''}">${pv}</div><div class="nm">${esc(it.name)}</div>${it.desc ? `<div class="muted small">${esc(it.desc)}</div>` : ''}<div class="pr">${own ? '' : `<span class="coin"></span>${fmt(it.price)}`}</div>${act}</div>`;
   }).join('');
   $('#goods').querySelectorAll('canvas[data-sl]').forEach(cv => { const v = new SlimeView(cv, { static: true }); v.color = cv.dataset.sl; v.draw(1200); });
   $('#goods').querySelectorAll('[data-buy]').forEach(b => b.addEventListener('click', () => buy(cat, b.dataset.buy)));
   $('#goods').querySelectorAll('[data-eq]').forEach(b => b.addEventListener('click', () => equip(cat, b.dataset.eq)));
+  $('#goods').querySelectorAll('[data-pv]').forEach(b => b.addEventListener('click', () => PV.id === b.dataset.pv ? PV.stop() : PV.start(b.dataset.pv)));
 }
 document.querySelectorAll('#shopSeg button').forEach(b => b.addEventListener('click', () => { S.shopCat = b.dataset.cat; renderShop(); }));
 function buy(cat, id) {
@@ -2475,7 +2483,11 @@ function buy(cat, id) {
   p.coins -= it.price; p.owned[cat] = [...p.owned[cat], id]; saveProgress(true);
   renderHeader(); renderShop(); toast(it.name + 'を手に入れました');
 }
-function equip(cat, id) { P().equipped[cat] = id; saveProgress(true); renderShop(); renderHP(); if (cat === 'bgm' && BGM.on) BGM.play(id); }
+function equip(cat, id) {
+  P().equipped[cat] = id; saveProgress(true);
+  if (cat === 'bgm') { if (PV.id) PV.stop(true); else if (BGM.on) BGM.play(id); }   // 試聴中なら止めて、BGM が鳴っていたら新しい曲へ
+  renderShop(); renderHP();
+}
 
 /* ---------- settings ---------- */
 function renderSettings() {
@@ -2520,6 +2532,18 @@ $('#sSize').addEventListener('input', e => { P().settings.size = Number(e.target
 $('#sLh').addEventListener('input', e => { P().settings.lh = Math.round(Number(e.target.value) * 100) / 100; saveProgress(); applySettings(); if (SR.layer) srRefreshSoon(); });
 $('#sVol').addEventListener('input', e => { P().settings.vol = Number(e.target.value); BGM.setVol(P().settings.vol); saveProgress(); });
 $('#sRootOpen').addEventListener('click', () => api.openFolder(null));
+// v1.1.16: BGM を値下げした分を、前の値段で買っていた人に一度だけ返す。
+// コインは「稼いだ分 − 今の値段で数えた買い物」で数え直せる作りなので、返したあとも数え直しとずれない。
+function bgmPriceFix(p) {
+  if (!p || p.bgm116) return 0;
+  const refund = (p.owned.bgm || []).reduce((a, id) => a + Math.max(0, (BGM_OLD_PRICE[id] || 0) - priceOf('bgm', id)), 0);
+  p.bgm116 = true; p.coins = (p.coins || 0) + refund;
+  return refund;
+}
+async function afterProgressLoad() {
+  const rf = bgmPriceFix(S.progress); await saveProgress(true);
+  if (rf) { renderHeader(); toast('BGMの値下げに合わせて、差額の ' + fmt(rf) + ' コインを返しました'); }
+}
 function priceOf(cat, id) { const list = catalog(cat); const it = list.find(x => x.id === id); return it ? it.price : ((RETIRED[cat] || {})[id] || 0); }
 // Coins only come from kills and only go to purchases, so after merging both sides they can be recomputed exactly.
 function mergeProgress(local, incoming) {
@@ -2592,7 +2616,7 @@ $('#sRootChange').addEventListener('click', async () => {
   try {
     const r = await api.chooseRoot(); if (!r) return;
     S.root = r; const prog = await api.readProgress();
-    if (prog) { S.progress = withDefaults(prog); adoptLegacy(S.progress); sumLedgers(S.progress); } else await saveProgress(true);
+    if (prog) { S.progress = withDefaults(prog); adoptLegacy(S.progress); sumLedgers(S.progress); if (!S.progress.bgm116) await afterProgressLoad(); } else await saveProgress(true);
     S.curWork = S.curCh = null; loaded.key = null; S.openWork = null;
     await refreshWorks(); renderSettings(); renderHeader(); renderHP();
     toast(prog ? 'このフォルダの記録を読み込みました' : '保存先を変えました。コインや記録は引き継いでいます');
@@ -2679,25 +2703,109 @@ const BGM = {
   ensure() { if (!this.ctx) { this.ctx = new AudioContext(); this.master = this.ctx.createGain(); this.master.gain.value = (P() ? P().settings.vol : 0.5) * 0.6; this.master.connect(this.ctx.destination); } this.ctx.resume(); return true; },
   setVol(v) { if (this.master) this.master.gain.setTargetAtTime(v * 0.6, this.ctx.currentTime, 0.05); },
   stop() { this.stopFns.forEach(f => { try { f(); } catch (e) {} }); this.stopFns = []; },
-  play(id) { this.stop(); this.ensure(); const tr = TRACKS[id]; if (tr) this.stopFns.push(tr(this.ctx, this.master)); }
+  play(id) { this.stop(); this.ensure(); AMB.keepOnly(AMB_KEYS[id] || []); const tr = TRACKS[id]; if (tr) this.stopFns.push(tr(this.ctx, this.master)); },
+  // 試聴のおわり：sec 秒かけて小さくしてから止める
+  fadeStop(sec, done) {
+    if (!this.ctx) { done && done(); return; }
+    const v = (P() ? P().settings.vol : 0.5) * 0.6, g = this.master.gain, now = this.ctx.currentTime;
+    g.cancelScheduledValues(now); g.setValueAtTime(g.value, now); g.linearRampToValueAtTime(0, now + sec);
+    setTimeout(() => { this.stop(); const t = this.ctx.currentTime; g.cancelScheduledValues(t); g.setValueAtTime(v, t); done && done(); }, sec * 1000 + 30);
+  }
+};
+// 商店の試聴（20秒ほど。おわりは少しずつ小さく）。BGM が鳴っていたら、試聴のあとに元の曲へ戻す
+const PV = {
+  id: null, timer: 0, wasOn: false,
+  start(id) {
+    if (this.id) this.stop(true, true);
+    this.wasOn = BGM.on; this.id = id; BGM.play(id);
+    this.timer = setTimeout(() => { const me = this.id; BGM.fadeStop(1.5, () => { if (this.id === me) this.finish(); }); }, 20000);
+    this.redraw();
+  },
+  // quiet: すぐ止める。noResume: 元の曲に戻さない（続けて別の曲を試聴するとき）
+  stop(quiet, noResume) { if (!this.id) return; clearTimeout(this.timer); BGM.stop(); this.finish(noResume); },
+  finish(noResume) {
+    clearTimeout(this.timer); this.id = null;
+    if (this.wasOn && !noResume) BGM.play(P().equipped.bgm);
+    this.redraw();
+  },
+  // 「♪ BGM」ボタンが押されたとき：試聴だけ止めて、元の曲には戻さない（ボタンの方で決める）
+  cancel() { if (!this.id) return; clearTimeout(this.timer); BGM.stop(); this.id = null; this.redraw(); },
+  redraw() { if (S.view === 'shop' && S.shopCat === 'bgm') renderShop(); }
+};
+// 環境音は bgm-gen.js が作る。ふだんは Worker（裏の作業場所）で作って、画面が固まらないようにする
+const AMB_KEYS = { rain: ['rain'], fire: ['fire'], forest: ['forest', 'wind'], clock: ['room'] };
+const AMB = {
+  cache: {}, pending: {}, worker: undefined,
+  getWorker() {
+    if (this.worker !== undefined) return this.worker;
+    try {
+      this.worker = new Worker('bgm-gen.js');
+      this.worker.onmessage = e => { const d = e.data; if (d.error) this.buildHere(d.key); else this.done(d.key, d.sr, [d.l, d.r]); };
+      this.worker.onerror = e => { if (e && e.preventDefault) e.preventDefault(); this.worker = null; Object.keys(this.pending).forEach(k => this.buildHere(k)); };
+    } catch (e) { this.worker = null; }
+    return this.worker;
+  },
+  buildHere(key) { const pd = this.pending[key]; if (!pd || typeof SHOBO_AMB === 'undefined') return; setTimeout(() => { if (this.pending[key]) this.done(key, pd.sr, SHOBO_AMB.build(key, pd.sr)); }, 30); },
+  done(key, sr, arr) {
+    const pd = this.pending[key]; delete this.pending[key]; if (!pd || !BGM.ctx) return;
+    const b = BGM.ctx.createBuffer(2, arr[0].length, sr); b.copyToChannel(arr[0], 0); b.copyToChannel(arr[1], 1);
+    this.cache[key] = b; pd.wait.forEach(f => f(b));
+  },
+  get(key, sr, cb) {
+    const c = this.cache[key]; if (c && c.sampleRate === sr) { cb(c); return; }
+    if (this.pending[key]) { this.pending[key].wait.push(cb); return; }
+    this.pending[key] = { sr, wait: [cb] };
+    const w = this.getWorker(); if (w) w.postMessage({ key, sr }); else this.buildHere(key);
+  },
+  // 鳴らす曲で使わない環境音は捨てる（スマホのメモリのため）
+  keepOnly(keys) { for (const k of Object.keys(this.cache)) if (!keys.includes(k)) delete this.cache[k]; },
+  // できたら 1.5 秒かけて大きくしながら、くり返し鳴らす
+  play(ctx, out, key, gain) {
+    let src = null, stopped = false;
+    this.get(key, ctx.sampleRate, b => {
+      if (stopped) return;
+      const g = ctx.createGain(), now = ctx.currentTime; src = ctx.createBufferSource(); src.buffer = b; src.loop = true;
+      g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(gain, now + 1.5); src.connect(g); g.connect(out); src.start(now);
+    });
+    return () => { stopped = true; if (src) try { src.stop(); } catch (e) {} };
+  }
 };
 const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
 function note(ctx, out, t, m, dur, type, vol, att, rel) { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = type; o.frequency.value = mtof(m); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + (att || 0.01)); g.gain.setTargetAtTime(0, t + dur, rel || 0.08); o.connect(g); g.connect(out); o.start(t); o.stop(t + dur + (rel || 0.08) * 6); }
 function sequencer(ctx, stepDur, onStep) { let step = 0, next = ctx.currentTime + 0.1; const id = setInterval(() => { while (next < ctx.currentTime + 0.25) { onStep(step, next); step++; next += stepDur; } }, 40); return () => clearInterval(id); }
-let NB = null; function noiseBuf(ctx) { if (NB) return NB; const b = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate); const d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; return NB = b; }
+// 時計のカチ・コチ（一度だけ作って使い回す）
+function clockTick(ctx, hi) {
+  const sr = ctx.sampleRate, d = new Float32Array(Math.floor(sr * 0.25));
+  SHOBO_AMB.burst(d, 0, sr, hi ? 3300 : 2800, 0.12, 0.0004, 0.9);
+  SHOBO_AMB.burst(d, Math.floor(sr * 0.006), sr, hi ? 5200 : 4600, 0.2, 0.0002, 0.4);
+  SHOBO_AMB.burst(d, 0, sr, 850, 0.08, 0.004, 0.45);
+  SHOBO_AMB.burst(d, 0, sr, hi ? 1900 : 1700, 0.01, 0.02, 0.06);
+  const b = ctx.createBuffer(1, d.length, sr); b.copyToChannel(d, 0); return b;
+}
+// オルゴールの1音（基音＋金属っぽい上の音）
+function musicBox(ctx, out, t, m, vol) {
+  const f = mtof(m), dec = Math.max(0.35, 1.6 - (m - 60) * 0.035);
+  [[1, 1, dec], [3.0, 0.09, dec * 0.25], [5.4, 0.06, 0.05], [8.9, 0.025, 0.02]].forEach(([r, a, tc]) => {
+    const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine'; o.frequency.value = f * r;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol * a, t + 0.003); g.gain.setValueAtTime(vol * a, t + 0.003); g.gain.setTargetAtTime(0, t + 0.003, tc);
+    o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.003 + tc * 7);
+  });
+}
+// 自作のワルツ（16小節、3拍子）。数字は音の高さ、[a,b] は半拍ずつ、0 は休み
+const MB_MEL = [[76, 79, 84], [83, 81, 76], [77, 81, 84], [83, [81, 79], 74], [76, 79, 84], [86, 83, 79], [81, 77, 74], [72, 0, 0],
+  [81, 84, 81], [79, 83, 79], [77, 81, 77], [76, 79, 76], [74, 77, 81], [79, [77, 76], 74], [72, 76, 79], [84, 0, 0]];
+const MB_CH = [[48, 64, 67], [45, 60, 64], [41, 57, 60], [43, 59, 62], [48, 64, 67], [40, 59, 64], [41, 57, 60, 43, 59, 62], [48, 64, 67],
+  [45, 60, 64], [40, 59, 64], [41, 57, 60], [48, 64, 67], [38, 57, 62], [43, 59, 62], [48, 64, 67], [48, 64, 67]];
+
 const TRACKS = {
   none: () => () => {},
   rain(ctx, out) {
-    const src = ctx.createBufferSource(); src.buffer = noiseBuf(ctx); src.loop = true;
-    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1400; bp.Q.value = 0.6;
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 5000;
-    const g = ctx.createGain(); g.gain.value = 0.18; src.connect(bp); bp.connect(lp); lp.connect(g); g.connect(out); src.start();
+    const stopAmb = AMB.play(ctx, out, 'rain', 0.13);
     const scale = [60, 62, 64, 67, 69, 72, 74, 76];
     const stopSeq = sequencer(ctx, 0.25, (s, t) => {
-      if (Math.random() < 0.18) note(ctx, out, t, 84 + Math.floor(Math.random() * 12), 0.02, 'sine', 0.03, 0.002, 0.02);
       if (s % 12 === 0 && Math.random() < 0.7) { const m = scale[Math.floor(Math.random() * scale.length)]; note(ctx, out, t, m, 0.3, 'triangle', 0.09, 0.01, 0.6); if (Math.random() < 0.5) note(ctx, out, t + 0.5, m - 12, 0.3, 'sine', 0.06, 0.01, 0.8); }
     });
-    return () => { stopSeq(); try { src.stop(); } catch (e) {} };
+    return () => { stopSeq(); stopAmb(); };
   },
   morning(ctx, out) {
     const chords = [[60, 64, 67, 72], [55, 59, 62, 67], [57, 60, 64, 69], [53, 57, 60, 65]]; const pat = [0, 1, 2, 3, 2, 1, 2, 3];
@@ -2712,18 +2820,46 @@ const TRACKS = {
     const stopSeq = sequencer(ctx, 0.5, (s, t) => { if (Math.random() < 0.42) { const m = sc[Math.floor(Math.random() * sc.length)]; note(ctx, out, t, m + 12, 0.05, 'sine', 0.07, 0.005, 1.1); note(ctx, out, t, m + 24, 0.03, 'sine', 0.015, 0.005, 0.7); } });
     return () => { stopSeq(); try { d1.stop(); d2.stop(); } catch (e) {} };
   },
-  journey(ctx, out) {
-    const mel = [64, 0, 67, 72, 71, 0, 67, 0, 69, 0, 72, 76, 74, 0, 72, 0, 65, 0, 69, 72, 74, 0, 72, 69, 67, 0, 64, 67, 72, 0, 0, 0,
-      76, 0, 74, 72, 71, 0, 72, 74, 72, 0, 69, 0, 65, 0, 69, 0, 67, 0, 71, 74, 77, 0, 76, 74, 72, 0, 67, 0, 72, 0, 0, 0];
-    const bass = [48, 45, 41, 43, 48, 45, 41, 43];
-    return sequencer(ctx, 60 / 120 / 2, (s, t) => {
-      const i = s % 64; const m = mel[i]; if (m) note(ctx, out, t, m, 0.2, 'square', 0.035, 0.005, 0.05);
-      if (s % 2 === 0) note(ctx, out, t, bass[Math.floor(i / 8)] - 12 + (s % 4 === 2 ? 12 : 0), 0.18, 'triangle', 0.1, 0.005, 0.05);
-      if (s % 4 === 2) { const n = ctx.createBufferSource(); n.buffer = noiseBuf(ctx); const g = ctx.createGain(); const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 6000; g.gain.setValueAtTime(0.05, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.06); n.connect(hp); hp.connect(g); g.connect(out); n.start(t); n.stop(t + 0.08); }
+  fire(ctx, out) {
+    const stopAmb = AMB.play(ctx, out, 'fire', 0.26);
+    // やわらかい和音：8秒ごとに Fmaj7 → B♭maj7 → Am7 → Gm7。ときどき和音の音をぽつりと
+    const chords = [[41, 57, 60, 64], [46, 57, 62, 65], [45, 55, 60, 64], [43, 58, 62, 65]];
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1100; lp.Q.value = 0.4; lp.connect(out);
+    const stopSeq = sequencer(ctx, 2, (s, t) => {
+      const ch = chords[Math.floor(s / 4) % 4];
+      if (s % 4 === 0) ch.forEach((m, i) => [-5, 5].forEach(det => {
+        const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'triangle'; o.frequency.value = mtof(m); o.detune.value = det;
+        const v = i === 0 ? 0.04 : 0.022;
+        g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v, t + 2.5); g.gain.setValueAtTime(v, t + 6.5); g.gain.linearRampToValueAtTime(0, t + 10.5);
+        o.connect(g); g.connect(lp); o.start(t); o.stop(t + 10.6);
+      }));
+      if (s % 4 !== 0 && Math.random() < 0.55) { const m = ch[1 + Math.floor(Math.random() * 3)] + 12; note(ctx, out, t + Math.random() * 0.8, m, 0.4, 'sine', 0.05, 0.02, 0.9); }
     });
+    return () => { stopSeq(); stopAmb(); };
+  },
+  forest(ctx, out) {
+    const a = AMB.play(ctx, out, 'forest', 1.0), b = AMB.play(ctx, out, 'wind', 1.0);
+    return () => { a(); b(); };
+  },
+  clock(ctx, out) {
+    const stopAmb = AMB.play(ctx, out, 'room', 0.03);
+    const tk = [clockTick(ctx, true), clockTick(ctx, false)];
+    // 1秒に1回カチ・コチ。オルゴールは 16小節（48秒）鳴って、20秒休む
+    const stopSeq = sequencer(ctx, 0.5, (s, t) => {
+      if (s % 2 === 0) { const b = ctx.createBufferSource(), g = ctx.createGain(); b.buffer = tk[(s / 2) % 2]; g.gain.value = 0.22 * (0.9 + 0.1 * Math.random()); b.connect(g); g.connect(out); b.start(t); }
+      const cyc = 136, i = s % cyc; if (i >= 96) return; // 半拍の数：48秒 = 96、休み 40
+      const bar = Math.floor(i / 6), beat = Math.floor((i % 6) / 2), half = i % 2, mel = MB_MEL[bar][beat], ch = MB_CH[bar];
+      const m = Array.isArray(mel) ? mel[half] : (half ? 0 : mel); if (m) musicBox(ctx, out, t, m, 0.07);
+      if (!half) {
+        const c = ch.length > 3 && beat === 2 ? ch.slice(3) : ch.slice(0, 3);
+        if (beat === 0 || (ch.length > 3 && beat === 2)) musicBox(ctx, out, t, c[0] + 12, 0.05); else c.slice(1).forEach(x => musicBox(ctx, out, t, x, 0.025));
+      }
+    });
+    return () => { stopSeq(); stopAmb(); };
   }
 };
 $('#bgmBtn').addEventListener('click', () => {
+  if (PV.id) PV.cancel();   // 試聴中に押したら、試聴を止めてからいつもどおり切り替える
   if (BGM.on) { BGM.stop(); BGM.on = false; }
   else { const id = P().equipped.bgm; BGM.play(id); BGM.on = true; if (id === 'none') toast('BGMが「無音」になっています。商店で曲を選べます'); }
   $('#bgmBtn').setAttribute('aria-pressed', BGM.on);
@@ -2744,7 +2880,8 @@ $('#bgmBtn').addEventListener('click', () => {
   try {
     S.root = await api.root();
     const prog = await api.readProgress();
-    S.progress = withDefaults(prog); adoptLegacy(S.progress); sumLedgers(S.progress); if (!prog) await saveProgress(true);
+    S.progress = withDefaults(prog); adoptLegacy(S.progress); sumLedgers(S.progress);
+    if (!prog || !S.progress.bgm116) await afterProgressLoad();
   } catch (e) { S.progress = withDefaults(null); fileErr(e, '保存先を準備できませんでした'); }
   renderHeader(); renderHP();
   await refreshWorks();

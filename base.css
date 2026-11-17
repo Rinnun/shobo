@@ -450,3 +450,14 @@ html:not(.android) .ed-status > *{flex:none}
 html:not(.android) .ed-status .spacer{flex:1 1 0;min-width:0}
 html:not(.android) .ed-status .hint-key{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
 html:not(.android) #edSave{min-width:7.2em}
+
+/* v1.1.16：商店の BGM の試聴ボタン。試聴中は波の棒がゆれる */
+.good .pv.bgm{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+.pv-play{font:inherit;font-size:12px;line-height:1;padding:5px 12px;border-radius:999px;border:1px solid var(--gold-deep);background:rgba(0,0,0,.45);color:var(--gold);cursor:pointer}
+.pv-play:hover{background:rgba(242,196,67,.12)}
+.pv-play[aria-pressed="true"]{background:var(--gold-deep);color:#1a1408}
+.pv.playing .wave i{background:var(--gold);animation:pvwave .9s ease-in-out infinite alternate;transform-origin:bottom}
+@keyframes pvwave{from{transform:scaleY(.35)}to{transform:scaleY(1)}}
+@media (prefers-reduced-motion: reduce){.pv.playing .wave i{animation:none}}
+/* v1.1.16：白磁の題字は墨色に（金色だと白い地に溶けて読めない）。鱗雲さんが案A（墨色）を選んだ */
+.sp-hakuji .sp-title,.fcover.sp-hakuji .fc-t{color:#2c2518;text-shadow:0 1px 0 rgba(255,255,255,.45)}
