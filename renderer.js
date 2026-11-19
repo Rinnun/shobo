@@ -933,26 +933,47 @@ function openImport(target) {
   });
 }
 
+const wTitleW = t => 'min(100%, ' + (Array.from(t || '').length * 1.08 + 1.2).toFixed(2) + 'em)';   // 題の長さに合わせた幅（となりに「名前を変える」）
+const W_TABS = [['ch', '章'], ['plot', 'プロット'], ['share', '本棚シェア'], ['etc', '書き出し・ほか']];
 function renderWork() {
   const wid = S.openWork, w = workById(wid); const box = $('#lib-work'); if (!w) return;
   const owned = P().owned.cover; const chs = w.chapters;
+  // v1.1.20: 上に表紙・題・字数と「読む」「最新話を書く」、下はタブ（章・プロット・本棚シェア・書き出し・ほか）
+  const tab = W_TABS.some(t => t[0] === S.wTab) ? S.wTab : 'ch';
+  const lastAt = P().settings.chDate && chs.length ? Math.max(...chs.map(c => c.mtime || 0)) : 0;
+  const rp = chs.length ? lsGet('ss.read.' + wid, null) : null, rpI = rp ? chs.findIndex(c => c.id === rp.ch) : -1;
   box.innerHTML = `<div class="stack">
   <div class="row"><button class="btn sm ghost" id="wBack">‹ 本棚へ</button><span class="spacer"></span><button class="btn sm ghost" id="wFolder">フォルダを開く</button></div>
-  <div class="work-top"><button type="button" class="spine-stand" id="wSpine" aria-label="装丁を変える" aria-expanded="false"><span class="sp-wrap">${coverHTML(w.cover, w.title, IS_ANDROID ? 112 : 168, w.face, w.titleBreak)}</span><span class="cap">${IS_ANDROID ? '長押しで装丁を変える' : 'クリックで装丁を変える'}</span></button>
-   <div class="stack">
-    <div class="field"><label for="wTitle">作品名（フォルダ名）</label><input class="input" id="wTitle" value="${esc(w.title)}"></div>
-    ${IS_ANDROID ? '' : '<div class="field plot-field" id="wPlot"></div>'}
-    <div class="muted small" style="font-variant-numeric:tabular-nums">${chs.length}章・${fmt(w.chars)}字</div>
-    ${shareFieldHTML(w)}
+  <div class="work-top w-head"><button type="button" class="spine-stand" id="wSpine" aria-label="装丁を変える" aria-expanded="false"><span class="sp-wrap">${coverHTML(w.cover, w.title, IS_ANDROID ? 112 : 168, w.face, w.titleBreak)}</span><span class="cap">${IS_ANDROID ? '長押しで装丁を変える' : 'クリックで装丁を変える'}</span></button>
+   <div class="w-info">
+    <div class="w-title-row"><input class="input w-title" id="wTitle" value="${esc(w.title)}" style="width:${wTitleW(w.title)}" aria-label="作品名（フォルダ名）" spellcheck="false"><button type="button" class="btn sm ghost w-ren" id="wRen">名前を変える</button></div>
+    <div class="muted small w-stat" style="font-variant-numeric:tabular-nums">${chs.length}章・${fmt(w.chars)}字${lastAt ? `　／　最後に書いた日 ${chWhen(lastAt)}` : ''}</div>
+    ${chs.length ? `<div class="w-acts"><button type="button" class="btn gold w-big" id="wRead">▶ ${rpI >= 0 && (rpI > 0 || rp.f > 0.02) ? '続きから読む' : '読む'}</button><button type="button" class="btn w-big" id="wLatest">✎ 最新話を書く</button></div>
+    <div class="muted small w-readnote">${rpI >= 0 && (rpI > 0 || rp.f > 0.02) ? '第' + (rpI + 1) + '章の読みかけから、本文だけを読めます。' : '「読む」は、本文だけを1章から続けて読めます。'}</div>` : ''}
    </div></div>
-  ${IS_ANDROID ? '<div class="field plot-field wide" id="wPlot"></div>' : ''}
-  <div class="row"><h3>章</h3><button class="btn sm ghost" id="wSort" title="章の表示順を切り替えます（章の番号は変わりません）">${P().settings.chDesc ? '↓ 最新話から' : '↑ 1話から'}</button><span class="spacer"></span>${chs.length ? `<button class="btn sm ghost" id="wPick" aria-pressed="${!!S.chPick}">${S.chPick ? '選ぶのをやめる' : '選ぶ'}</button>` : ''}${chs.length && !S.chPick ? `<button class="btn sm gold" id="wLatest">最新話を書く</button>` : ''}<button class="btn sm" id="wAdd">章を追加</button><button class="btn sm" id="wImp">mdを取り込む</button></div>
+  <div class="w-tabs" role="tablist">${W_TABS.map(([k, n]) => `<button type="button" role="tab" data-wtab="${k}" aria-pressed="${k === tab}">${n}${k === 'ch' ? `<small>${chs.length}</small>` : ''}</button>`).join('')}</div>
+  <div class="w-pane stack" data-pane="ch"${tab === 'ch' ? '' : ' hidden'}>
+  <div class="row"><button class="btn sm ghost" id="wSort" title="章の表示順を切り替えます（章の番号は変わりません）">${P().settings.chDesc ? '↓ 最新話から' : '↑ 1話から'}</button><span class="spacer"></span>${chs.length ? `<button class="btn sm ghost" id="wPick" aria-pressed="${!!S.chPick}">${S.chPick ? '選ぶのをやめる' : '選ぶ'}</button>` : ''}<button class="btn sm" id="wAdd">章を追加</button><button class="btn sm" id="wImp">mdを取り込む</button></div>
   ${S.chPick ? `<div class="tidy-bar ch-pickbar"><span class="muted small" id="chPickCount"></span><button class="btn sm ghost" id="chPickAll">すべて選ぶ</button><span class="spacer"></span><button class="btn sm" id="chHide" disabled>一覧から隠す</button><button class="btn sm danger" id="chTrash" disabled>削除</button></div>` : ''}
   <ul class="chapters${S.chPick ? ' picking' : ''}" id="chList"></ul>
   ${w.hidden && w.hidden.length ? `<details class="hidden-files"${S.showHidden ? ' open' : ''}><summary>隠しているファイル（${w.hidden.length}）</summary><p class="note">章の一覧に出さず、文字数にも数えていないファイルです。消してはいません。</p><ul class="chapters">${w.hidden.map(h => `<li><span class="t muted">${esc(h.title)}</span><span class="spacer"></span><button class="btn sm" data-unhide="${esc(h.id)}">一覧に戻す</button></li>`).join('')}</ul><div class="row"><span class="spacer"></span><button class="btn sm ghost" id="unhideAll">すべて一覧に戻す</button></div></details>` : ''}
-  <div class="row"><button class="btn sm gold" id="wExpCh">章ごとにmdで書き出す</button><button class="btn sm" id="wExp">1つのmdにまとめて書き出す</button><button class="btn sm" id="wCopy">作品の全文をコピー</button><span class="spacer"></span><button class="btn sm danger" id="wDel">ごみ箱へ移動</button></div>
-  <p class="note">「章ごと」は、選んだフォルダの中に作品名のフォルダを作り、章を1つずつ.mdファイルで書き出します（同じ名前のファイルは上書き）。Driveのフォルダを選ぶか、書き出したフォルダをそのままDriveにアップロードしてください。</p>
+  </div>
+  <div class="w-pane" data-pane="plot"${tab === 'plot' ? '' : ' hidden'}><div class="field plot-field wide" id="wPlot"></div></div>
+  <div class="w-pane" data-pane="share"${tab === 'share' ? '' : ' hidden'}>${shareFieldHTML(w)}</div>
+  <div class="w-pane stack" data-pane="etc"${tab === 'etc' ? '' : ' hidden'}>
+  <div class="field"><label>書き出す</label><div class="row"><button class="btn sm gold" id="wExpCh">章ごとにmdで書き出す</button><button class="btn sm" id="wExp">1つのmdにまとめて書き出す</button><button class="btn sm" id="wCopy">作品の全文をコピー</button></div>
+  <p class="note" style="margin:0">「章ごと」は、選んだフォルダの中に作品名のフォルダを作り、章を1つずつ.mdファイルで書き出します（同じ名前のファイルは上書き）。Driveのフォルダを選ぶか、書き出したフォルダをそのままDriveにアップロードしてください。</p></div>
+  <div class="field"><label>作品を消す</label><div class="row"><button class="btn sm danger" id="wDel">ごみ箱へ移動</button><span class="muted small">章ごと消します。${esc(TRASH_NOTE)}</span></div></div>
+  </div>
  </div>`;
+  box.querySelectorAll('[data-wtab]').forEach(b => b.addEventListener('click', () => {
+    S.wTab = b.dataset.wtab; box.querySelectorAll('[data-wtab]').forEach(x => x.setAttribute('aria-pressed', x === b));
+    box.querySelectorAll('[data-pane]').forEach(x => { x.hidden = x.dataset.pane !== S.wTab; });
+  }));
+  $('#wRen').onclick = () => { const t = $('#wTitle'); t.focus(); t.select(); };
+  $('#wTitle').addEventListener('input', e => { e.target.style.width = wTitleW(e.target.value); });
+  $('#wTitle').addEventListener('keydown', e => { if (e.key === 'Enter') e.target.blur(); else if (e.key === 'Escape') { e.target.value = w.title; e.target.blur(); } });
+  if ($('#wRead')) $('#wRead').onclick = () => openReader(wid);
   const ul = $('#chList');
   // Display order only: newest-first shows the list reversed; chapter numbers and the saved order stay the same.
   const desc = !!P().settings.chDesc; const last = chs.length - 1;
@@ -1089,6 +1110,138 @@ function renderWork() {
     catch (e) { fileErr(e, 'ごみ箱へ移動できませんでした'); }
   };
 }
+
+/* ---------- v1.1.20 閲覧モード：本文だけを、章をまたいで続けて読む（打ち込みはできない） ---------- */
+const RD = { on: false, wid: null, chs: [], first: 0, last: -1, cur: 0, bars: true, busy: false, moved: 0, saveT: null };
+function rdSet() {
+  const s = P().settings, r = s.read || {};
+  return { size: Math.min(28, Math.max(14, Math.round(+r.size || +s.size || 18))), lh: Math.min(2.6, Math.max(1.5, +r.lh || 2)), font: r.font === 'gothic' || (!r.font && s.font === 'gothic') ? 'gothic' : 'mincho' };
+}
+const rdName = c => String(c.title).replace(/^\d+[.．_\-\s　]*/, '') || c.title;
+const rdText = t => String(t).replace(/^﻿/, '').replace(/^[ \t]*<br\s*\/?>[ \t]*$/gim, '').replace(/\s+$/, '');
+function rdApply() {
+  const el = $('#reader'); if (!el) return; const r = rdSet();
+  el.style.setProperty('--rd-size', r.size + 'px'); el.style.setProperty('--rd-lh', String(r.lh));
+  el.classList.toggle('gothic', r.font === 'gothic');
+  const aa = el.querySelector('.rd-aa'); if (!aa) return;
+  aa.querySelector('#rdSize').value = r.size; aa.querySelector('#rdSizeV').textContent = r.size;
+  aa.querySelector('#rdLh').value = r.lh; aa.querySelector('#rdLhV').textContent = r.lh.toFixed(2);
+  aa.querySelectorAll('[data-rdfont]').forEach(b => b.setAttribute('aria-pressed', b.dataset.rdfont === r.font));
+}
+// 今どの章のどのあたりか（章の中の割合）
+function rdWhere() {
+  const sc = $('#rdScroll'); if (!sc) return null; const y = sc.scrollTop + 8;
+  const secs = [...sc.querySelectorAll('.rd-sec')]; if (!secs.length) return null;
+  let sec = secs[0]; for (const x of secs) if (x.offsetTop <= y + sc.clientHeight * 0.25) sec = x;
+  const i = +sec.dataset.i, f = Math.min(1, Math.max(0, (y - sec.offsetTop) / Math.max(1, sec.offsetHeight)));
+  return { i, f };
+}
+function rdSavePos() {
+  const p = rdWhere(); if (!p || !RD.wid) return; const c = RD.chs[p.i]; if (!c) return;
+  lsSet('ss.read.' + RD.wid, { ch: c.id, f: +p.f.toFixed(4), at: Date.now() });
+}
+function rdUpdateBar() {
+  const p = rdWhere(); if (!p) return; RD.cur = p.i; const n = RD.chs.length, el = $('#reader'); if (!el) return;
+  el.querySelector('.rd-ttl').textContent = workById(RD.wid) ? workById(RD.wid).title + '　第' + (p.i + 1) + '章 ' + rdName(RD.chs[p.i]) : '';
+  const rg = el.querySelector('#rdRange'); if (document.activeElement !== rg) rg.value = p.i;
+  rg.style.setProperty('--fill', (n > 1 ? (p.i + p.f) / n * 100 : p.f * 100).toFixed(2) + '%');
+  el.querySelector('#rdPos').textContent = (p.i + 1) + ' / ' + n + '章';
+  el.querySelector('#rdPrev').disabled = p.i === 0; el.querySelector('#rdNext').disabled = p.i >= n - 1;
+}
+function rdBars(on) { RD.bars = on; const el = $('#reader'); if (el) el.classList.toggle('bars', on); if (!on) rdAa(false); }
+function rdAa(on) { const el = $('#reader'); if (!el) return; const a = el.querySelector('.rd-aa'); a.hidden = !on; el.querySelector('#rdAaBtn').setAttribute('aria-pressed', on); }
+async function rdSection(i) {
+  const c = RD.chs[i]; let text = '';
+  try { text = rdText((await api.readChapter(RD.wid, c.id)).text); } catch (e) { text = '（この章を読み込めませんでした）'; }
+  const sec = document.createElement('section'); sec.className = 'rd-sec'; sec.dataset.i = i;
+  sec.innerHTML = `<div class="rd-ch"><div class="n">第 ${i + 1} 章</div><div class="t">${esc(rdName(c))}</div><div class="o">◆</div></div><div class="rd-text">${esc(text) || '<span class="muted">（まだ何も書かれていません）</span>'}</div>`
+    + (i < RD.chs.length - 1 ? `<div class="rd-end">― 第 ${i + 1} 章 おわり ―</div>` : `<div class="rd-end">― 第 ${i + 1} 章 おわり ―</div><div class="rd-fin"><span class="muted small">ここまでが最新の章です。</span><div class="row" style="justify-content:center"><button type="button" class="btn sm" data-rd="close">‹ 目次へ戻る</button><button type="button" class="btn sm gold" data-rd="write">✎ 続きを書く</button></div></div>`);
+  return sec;
+}
+// 下が近づいたら次の章をつなげる
+async function rdFill() {
+  const sc = $('#rdScroll'); if (!sc || RD.busy) return; RD.busy = true;
+  try {
+    while (RD.on && RD.last < RD.chs.length - 1 && sc.scrollTop + sc.clientHeight * 2.5 > sc.scrollHeight) {
+      const sec = await rdSection(RD.last + 1); if (!RD.on || $('#rdScroll') !== sc) return;
+      sc.querySelector('.rd-col').appendChild(sec); RD.last++;
+    }
+  } finally { RD.busy = false; }
+}
+async function rdShow(i, f) {
+  const sc = $('#rdScroll'); if (!sc) return; i = Math.min(RD.chs.length - 1, Math.max(0, i));
+  const col = sc.querySelector('.rd-col'); RD.busy = true;
+  try {
+    const sec = await rdSection(i); if (!RD.on) return;
+    col.innerHTML = i > 0 ? `<div class="rd-before"><button type="button" class="btn sm ghost" data-rd="before">‹ 前の章（第${i}章）から読む</button></div>` : '';
+    col.appendChild(sec); RD.first = RD.last = i;
+  } finally { RD.busy = false; }
+  await rdFill();
+  const sec = col.querySelector('.rd-sec');
+  RD.jumpAt = performance.now(); sc.scrollTop = f > 0 ? sec.offsetTop + f * sec.offsetHeight - 8 : i > 0 ? sec.offsetTop : 0;
+  await rdFill(); RD.moved = 0; RD.jumpAt = performance.now(); rdUpdateBar(); rdSavePos();
+}
+async function openReader(wid, startId) {
+  const w = workById(wid); if (!w || !w.chapters.length || RD.on) return;
+  if (S.curWork === wid) { try { await saveChapter(); } catch (e) {} }
+  closeCov();
+  Object.assign(RD, { on: true, wid, chs: w.chapters.slice(), first: 0, last: -1, cur: 0, busy: false, moved: 0 });
+  const n = RD.chs.length;
+  const el = document.createElement('div'); el.id = 'reader'; el.className = 'reader bars' + (IS_ANDROID ? ' phone' : '');
+  el.innerHTML = `<div class="rd-scroll" id="rdScroll" tabindex="-1"><div class="rd-col"></div></div>
+  <div class="rd-bar top"><button type="button" class="btn sm ghost" data-rd="close">‹ 目次</button><div class="rd-ttl"></div><button type="button" class="btn sm ghost" id="rdAaBtn" aria-pressed="false" aria-label="読むときの文字">Aa</button></div>
+  <div class="rd-aa" hidden><div class="h">読むときの文字</div>
+   <div class="rw"><span>文字の大きさ</span><input type="range" id="rdSize" min="14" max="28" step="1"><span id="rdSizeV" class="v"></span></div>
+   <div class="rw"><span>行の間</span><input type="range" id="rdLh" min="1.5" max="2.6" step="0.05"><span id="rdLhV" class="v"></span></div>
+   <div class="rw"><span>書体</span><div class="segm"><button type="button" data-rdfont="mincho">明朝</button><button type="button" data-rdfont="gothic">ゴシック</button></div></div>
+   <div class="muted small">書くときの設定とは別に覚えます。</div></div>
+  <div class="rd-bar bottom"><button type="button" class="btn sm ghost" id="rdPrev">‹ 前の章</button><input type="range" id="rdRange" min="0" max="${n - 1}" step="1" value="0" aria-label="章を選ぶ"${n < 2 ? ' disabled' : ''}><span class="rd-pos" id="rdPos"></span><button type="button" class="btn sm ghost" id="rdNext">次の章 ›</button><button type="button" class="btn sm" data-rd="here">✎ <span class="wide">この章を</span>書く</button></div>`;
+  try { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); const sl = window.getSelection(); if (sl) sl.removeAllRanges(); } catch (e) {}
+  document.body.appendChild(el); document.body.classList.add('reading'); rdApply();
+  const sc = el.querySelector('#rdScroll');
+  el.addEventListener('click', e => {
+    const b = e.target.closest('[data-rd]');
+    if (b) { const k = b.dataset.rd;
+      if (k === 'close') closeReader();
+      else if (k === 'before') rdShow(RD.first - 1, 0);
+      else if (k === 'here') { const c = RD.chs[RD.cur]; closeReader(); if (c) openChapter(wid, c.id); }
+      else if (k === 'write') { const c = RD.chs[RD.chs.length - 1]; closeReader(); openChapter(wid, c.id); }
+      return; }
+    if (e.target.closest('button,input,a,.rd-aa,.rd-bar')) return;
+    const sel = window.getSelection && window.getSelection(); if (sel && !sel.isCollapsed && sel.anchorNode && el.contains(sel.anchorNode) && String(sel) !== '') return;   // 文字を選んでいるときは帯を出し入れしない
+    if (!el.querySelector('.rd-aa').hidden) { rdAa(false); return; }
+    rdBars(!RD.bars);
+  });
+  el.querySelector('#rdAaBtn').onclick = () => rdAa(el.querySelector('.rd-aa').hidden);
+  el.querySelector('#rdPrev').onclick = () => rdShow(RD.cur - 1, 0);
+  el.querySelector('#rdNext').onclick = () => rdShow(RD.cur + 1, 0);
+  el.querySelector('#rdRange').addEventListener('input', e => { el.querySelector('#rdPos').textContent = (+e.target.value + 1) + ' / ' + n + '章'; });
+  el.querySelector('#rdRange').addEventListener('change', e => { rdShow(+e.target.value, 0); e.target.blur(); });
+  let saveSet = null;
+  const setRead = (k, v) => { const s = P().settings; s.read = Object.assign({}, s.read, { [k]: v }); const p = rdWhere(); rdApply(); if (p) { const sec = sc.querySelector(`.rd-sec[data-i="${p.i}"]`); RD.jumpAt = performance.now(); if (sec) sc.scrollTop = sec.offsetTop + p.f * sec.offsetHeight - 8; } clearTimeout(saveSet); saveSet = setTimeout(saveProgress, 400); };
+  el.querySelector('#rdSize').addEventListener('input', e => setRead('size', +e.target.value));
+  el.querySelector('#rdLh').addEventListener('input', e => setRead('lh', +e.target.value));
+  el.querySelectorAll('[data-rdfont]').forEach(b => b.addEventListener('click', () => setRead('font', b.dataset.rdfont)));
+  let lastY = 0;
+  sc.addEventListener('scroll', () => {
+    const d = Math.abs(sc.scrollTop - lastY); lastY = sc.scrollTop; if (performance.now() - (RD.jumpAt || 0) > 250) RD.moved += d;   // 章へ飛んだときの動きは数えない（帯を出したまま）
+    if (RD.bars && RD.moved > 60 && el.querySelector('.rd-aa').hidden) rdBars(false);
+    rdUpdateBar(); rdFill(); clearTimeout(RD.saveT); RD.saveT = setTimeout(rdSavePos, 300);
+  }, { passive: true });
+  const pos = startId ? null : lsGet('ss.read.' + wid, null);
+  let i = startId ? RD.chs.findIndex(c => c.id === startId) : pos ? RD.chs.findIndex(c => c.id === pos.ch) : 0; if (i < 0) i = 0;
+  await rdShow(i, pos && RD.chs[i] && pos.ch === RD.chs[i].id ? +pos.f || 0 : 0);
+  RD.moved = 0; lastY = sc.scrollTop; try { sc.focus({ preventScroll: true }); } catch (e) {}
+}
+function closeReader() {
+  if (!RD.on) return; rdSavePos(); clearTimeout(RD.saveT);
+  RD.on = false; const el = $('#reader'); if (el) el.remove(); document.body.classList.remove('reading');
+  if (S.view === 'library' && S.openWork === RD.wid) renderWork();
+}
+document.addEventListener('keydown', e => {
+  if (!RD.on || dlg.open) return;
+  if (e.key === 'Escape') { e.preventDefault(); const a = $('#reader .rd-aa'); if (a && !a.hidden) rdAa(false); else closeReader(); }
+}, true);
 
 function closeCov() { const p = $('.cov-pop'); if (p) p.remove(); const sp = $('#wSpine'); if (sp) { sp.classList.remove('open'); sp.setAttribute('aria-expanded', 'false'); } if (S.covDirty) { S.covDirty = false; if (S.view === 'library') renderLibrary(); } }
 document.addEventListener('pointerdown', e => { const p = $('.cov-pop'); if (p && !p.contains(e.target) && !e.target.closest('#wSpine')) closeCov(); });
@@ -2711,6 +2864,7 @@ if (window.visualViewport) {
 }
 if (api.onBack) api.onBack(() => {
   if (dlg.open) { closeDlg(); return; }
+  if (RD.on) { const a = $('#reader .rd-aa'); if (a && !a.hidden) rdAa(false); else closeReader(); return; }
   if (S.tidy) { S.tidy = false; S.picked.clear(); renderLibrary(); return; }
   if (S.view === 'library' && S.openWork) { S.openWork = null; renderLibrary(); return; }
   if (S.view === 'editor' && S.curWork) { saveChapter(); openWork(S.curWork); return; }
