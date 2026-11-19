@@ -66,7 +66,7 @@ const CATS = ['cover', 'slime', 'bgm', 'spark', 'script'];
 // v1.1.18: 本棚シェアで題を伏せる字（商店の「おまけ」）。字そのものは fakescript.js。説明の文は鱗雲さん作
 const SCRIPTS = [
   { id: 'cyr', name: '異世界文字', price: 0, desc: '剣と魔法の世界の文字。', cover: 'enji' },
-  { id: 'wa', name: '和風文字', price: 300, desc: '極東の民の文字。', cover: 'watoji' },
+  { id: 'wa', name: '和風文字', price: 300, desc: '極東の民の文字。筆と墨で、流れるように続けて綴る。', cover: 'watoji' },
   { id: 'voy', name: 'ヴォイニッチ風', price: 400, desc: '誰にも読めない古写本の文字。', cover: 'kosho' },
   { id: 'moji', name: '文字化け', price: 500, desc: '捻じれてひしゃげた異界の文字。', cover: 'madousho' }];
 const BGMS = [
@@ -2522,7 +2522,7 @@ function renderShop() {
     let pv = '';
     if (cat === 'cover') pv = spineHTML(it.id, it.name, 34, 88);
     else if (cat === 'slime') pv = `<canvas width="96" height="72" data-sl="${it.id}"${isMonster(it.id) ? ' class="mon"' : ''}></canvas>`;
-    else if (cat === 'script') pv = fakeSpine(it.cover, '蛇喰鷲書房', 34, 88, it.id);
+    else if (cat === 'script') pv = scriptSample(it.id);
     else if (cat === 'spark') pv = `<div class="spark-pv">${[3, 5, 2, 4, 3].map((s, i) => `<i style="width:${s * 2}px;height:${s * 2}px;background:${it.c};box-shadow:0 0 ${s * 3}px ${it.c};opacity:${0.55 + i % 2 * 0.4}"></i>`).join('')}</div>`;
     else pv = `<div class="wave">${Array.from({ length: 12 }, (_, i) => `<i style="height:${it.id === 'none' ? 4 : 8 + Math.round(Math.abs(Math.sin((i + 1) * (it.id.length + 1))) * 28)}px;animation-delay:${-(i * 0.37 % 1).toFixed(2)}s"></i>`).join('')}</div>`
       + (it.id === 'none' ? '' : `<button class="pv-play" data-pv="${it.id}" aria-pressed="${PV.id === it.id}">${PV.id === it.id ? '■ 止める' : '▶ 試聴'}</button>`);
@@ -2781,6 +2781,12 @@ function workShare(w) {
   return { show: s.show !== false, hide };
 }
 // 背表紙（伏せ字つき）。文字化けはふつうの字なので題字として書く。ほかの字は fakeTitles() が DOM に入れたあとで重ねる
+// 商店の見本：金の枠の札に、字を大きく書く（細い背表紙だと窮屈で、文字化けははみ出したため）
+function scriptSample(id) {
+  if (id === 'moji') return `<div class="ss-plate"><span class="ss-moji">${esc(FAKE.mojibake('小説'))}</span></div>`;
+  if (id === 'wa') return `<div class="ss-plate v">${FAKE.svgV('蛇喰鷲').html}</div>`;
+  return `<div class="ss-plate">${FAKE.svg('蛇喰鷲書房', id === 'voy' ? 'voy' : 'cyr').html}</div>`;
+}
 function fakeSpine(cover, title, w, h, mode, brk) {
   if (!mode) return spineHTML(cover, title, w, h, brk);
   if (mode === 'moji') return spineHTML(cover, FAKE.mojibake(title), w, h, '');
