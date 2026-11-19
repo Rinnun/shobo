@@ -325,7 +325,7 @@ dialog::backdrop{background:rgba(0,0,0,.65)}
 .cov-pop.front .cover-pick .nm{font-size:10.5px;color:var(--muted)}
 
 /* ---- v1.1.4: plot mode ---- */
-body.plot-mode textarea.paper{font-family:var(--font-ui);font-size:14.5px;line-height:var(--pm-lh,1.8);border-color:#7d8ea3;box-shadow:0 0 0 1px rgba(160,180,205,.18);tab-size:4}
+body.plot-mode textarea.paper{font-family:var(--font-ui);line-height:var(--pm-lh,1.8);border-color:#7d8ea3;box-shadow:0 0 0 1px rgba(160,180,205,.18);tab-size:4}
 body.plot-mode textarea.paper:focus{border-color:#9fb3cb;box-shadow:0 0 0 3px rgba(160,180,205,.12)}
 .pm-badge{display:inline-flex;align-items:center;font-size:12px;color:#c9d6e6;border:1px solid #6f8299;border-radius:999px;padding:2px 10px;background:rgba(120,140,165,.12);white-space:nowrap}
 .pm-tools .btn[aria-pressed="true"]{border-color:#8fa3bb;color:#e6edf6;background:rgba(120,140,165,.2)}
@@ -461,3 +461,9 @@ html:not(.android) #edSave{min-width:7.2em}
 @media (prefers-reduced-motion: reduce){.pv.playing .wave i{animation:none}}
 /* v1.1.16：白磁の題字は墨色に（金色だと白い地に溶けて読めない）。鱗雲さんが案A（墨色）を選んだ */
 .sp-hakuji .sp-title,.fcover.sp-hakuji .fc-t{color:#2c2518;text-shadow:0 1px 0 rgba(255,255,255,.45)}
+
+/* v1.1.17：プロット編集モードの「見出しへ移動」。PC は上の段（タイトルと札のあいだ）、スマホは下の段 */
+.pm-jump{flex:0 0 220px;margin-right:10px}
+.pm-jump[hidden]{display:none}
+.pm-jump select{width:100%;background:#15120d;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:5px 8px;font:inherit;font-size:13px}
+.ed-status .pm-jump{flex:1 1 auto;min-width:0;max-width:260px;margin:0 8px}

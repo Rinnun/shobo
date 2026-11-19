@@ -1192,7 +1192,7 @@ async function openChapter(wid, cid) {
   setView('editor');
 }
 function applySettings() {
-  const s = P().settings; edText.className = 'paper ' + (s.font === 'gothic' ? 'gothic' : 'mincho'); edText.style.fontSize = s.size + 'px';
+  const s = P().settings; edText.className = 'paper ' + (s.font === 'gothic' ? 'gothic' : 'mincho'); edText.style.fontSize = (PM.on ? pmSize() : s.size) + 'px';
   // v1.1.13: line height (本文 1.4–2.4, default 1.95). The plot keeps its old ratio to the text (1.8 : 1.95).
   const lh = Math.min(2.4, Math.max(1.4, Number(s.lh) || 1.95)), de = document.documentElement.style;
   de.setProperty('--ed-lh', String(lh)); de.setProperty('--pm-lh', (lh * 1.8 / 1.95).toFixed(3));
@@ -1332,11 +1332,45 @@ function pmSetText(md) { if (PM.wy) { wyRender(wyParse(md)); wyHistReset(); } el
 function pmSurface() {
   const on = PM.on && PM.wy;
   pmEd.hidden = !on; edText.style.visibility = on ? 'hidden' : '';
-  if (on) { pmEd.style.fontSize = (P().settings.size || 17) * 0.88 + 'px'; pmEd.classList.toggle('chips', P().settings.pmTag === 'chip'); }
+  if (on) { pmEd.style.fontSize = pmSize() + 'px'; pmEd.classList.toggle('chips', P().settings.pmTag === 'chip'); }
+  // v1.1.17: 記号のまま表示（textarea）もプロットの大きさに。本文に戻るときは本文の大きさ
+  edText.style.fontSize = (PM.on ? pmSize() : (P().settings.size || 17)) + 'px';
 }
+// v1.1.17: プロットの文字の大きさ（設定「プロットモード」）。まだ選んでいなければ本文と同じ（前は本文の88%だった）
+function pmSize() { const s = P().settings; return Number(s.pmSize) || Number(s.size) || 17; }
+/* v1.1.17: プロット編集モードの「見出しへ移動」。開くたびに、いま書いてある見出しで並びを作り直す */
+const pmJump = $('#pmJump');
+if (IS_ANDROID) $('#pmSave').before($('#pmJumpWrap'));   // スマホは下の段（字数と保存のあいだ）
+function pmHeads() {
+  if (PM.wy) return [...pmEd.children].map((d, i) => /^h[1-6]$/.test(d.className) ? { lv: +d.className[1], text: d.textContent, at: i } : null).filter(Boolean);
+  const out = []; let pos = 0;
+  for (const l of edText.value.split('\n')) { const m = l.match(/^(#{1,6})\s+(.+)$/); if (m) out.push({ lv: m[1].length, text: m[2], at: pos + l.length }); pos += l.length + 1; }
+  return out;
+}
+function pmJumpFill() {
+  const hs = pmHeads(), minL = hs.length ? Math.min(...hs.map(h => h.lv)) : 1;
+  pmJump.innerHTML = '<option value="">' + (hs.length ? '見出しへ移動…' : '見出しはまだありません') + '</option>'
+    + hs.map((h, i) => `<option value="${i}">${'　'.repeat(h.lv - minL)}${esc(h.text.slice(0, 40))}</option>`).join('');
+  pmJump._hs = hs;
+}
+['pointerdown', 'focus', 'keydown'].forEach(ev => pmJump.addEventListener(ev, e => { if (ev === 'keydown' && e.key !== ' ' && e.key !== 'Enter' && !e.key.startsWith('Arrow')) return; if (ev === 'keydown' && pmJump._hs) return; pmJumpFill(); }));
+pmJump.addEventListener('blur', () => { pmJump._hs = null; });
+pmJump.addEventListener('change', () => {
+  const h = (pmJump._hs || [])[+pmJump.value]; pmJump.value = ''; pmJump._hs = null; if (!h) return;
+  if (PM.wy) {
+    const el = pmEd.children[h.at]; if (!el) return;
+    pmEd.scrollTop += el.getBoundingClientRect().top - pmEd.getBoundingClientRect().top - 8;
+    const r = document.createRange(); r.selectNodeContents(el); r.collapse(false);
+    pmEd.focus({ preventScroll: true }); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+  } else {
+    edText.focus({ preventScroll: true }); edText.setSelectionRange(h.at, h.at);
+    const cs = getComputedStyle(edText), lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.8;
+    edText.scrollTop += caretPoint().y - lh * 0.55 - (parseFloat(cs.paddingTop) || 0);
+  }
+});
 function pmChrome() {
   document.body.classList.toggle('plot-mode', PM.on);
-  novelTools.hidden = PM.on; $('#pmTools').hidden = !PM.on; $('#pmSave').hidden = !PM.on; $('#pmBadge').hidden = !PM.on;
+  novelTools.hidden = PM.on; $('#pmTools').hidden = !PM.on; $('#pmSave').hidden = !PM.on; $('#pmBadge').hidden = !PM.on; $('#pmJumpWrap').hidden = !PM.on;
   document.querySelectorAll('.nv-hint').forEach(x => x.hidden = PM.on); document.querySelectorAll('.pm-hint').forEach(x => x.hidden = !PM.on);
   edTitle.readOnly = PM.on; edTitle.title = PM.on ? 'プロットのファイル名（名前は作品ページで変わります）' : '';
   if (!PM.on) closeMenus();
@@ -2507,7 +2541,9 @@ function renderSettings() {
   radio('sPlotDef', p.settings.plotDefault === 'fixed' ? 'fixed' : 'auto'); radio('sPlotFolder', p.settings.plotFolder === 'file' ? 'file' : 'folder');
   $('#sPlotClean').checked = !!p.settings.plotClean;
   radio('sPmView', p.settings.pmView === 'raw' ? 'raw' : 'wysi'); radio('sPmTag', p.settings.pmTag === 'chip' ? 'chip' : 'plain');
+  $('#sPmSize').value = pmSize(); $('#sPmSizeV').textContent = pmSize() + 'px';
 }
+$('#sPmSize').addEventListener('input', e => { P().settings.pmSize = Number(e.target.value); $('#sPmSizeV').textContent = e.target.value + 'px'; saveProgress(); if (PM.on) pmSurface(); });
 document.querySelectorAll('input[name=sFoe]').forEach(r => r.addEventListener('change', () => { if (!r.checked) return; P().settings.foeRandom = r.value === 'random'; P().foeOf = null; saveProgress(true); renderHP(); }));
 document.querySelectorAll('input[name=sPlotDef]').forEach(r => r.addEventListener('change', () => { if (r.checked) { P().settings.plotDefault = r.value; saveProgress(); } }));
 document.querySelectorAll('input[name=sPlotFolder]').forEach(r => r.addEventListener('change', () => { if (r.checked) { P().settings.plotFolder = r.value; saveProgress(); } }));

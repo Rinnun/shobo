@@ -217,6 +217,7 @@ body.in-zone #slimeFloat .mini-slime{filter:drop-shadow(0 0 6px rgba(242,196,67,
       <div class="ed-head">
         <div class="crumb"><button class="w" id="edWork"></button><span class="muted">›</span><span class="muted small" id="edChNo"></span></div>
         <input class="ch-title" id="edTitle" placeholder="章のタイトル（ファイル名）" aria-label="章のタイトル">
+        <span class="pm-jump" id="pmJumpWrap" hidden><select id="pmJump" aria-label="見出しへ移動"><option value="">見出しへ移動…</option></select></span>
         <span class="pm-badge" id="pmBadge" hidden>プロット編集中・自動保存なし</span>
       </div>
       <div class="ed-tools" role="toolbar" aria-label="入力と書き出し">
@@ -394,6 +395,7 @@ body.in-zone #slimeFloat .mini-slime{filter:drop-shadow(0 0 6px rgba(242,196,67,
       </div>
       <div class="panel stack" id="sPmPanel">
         <h3>プロットモード</h3>
+        <div class="field"><label for="sPmSize">プロットの文字の大きさ <span class="set-val" id="sPmSizeV"></span></label><input class="input" id="sPmSize" type="range" min="14" max="26" step="1"></div>
         <div class="field"><label>プロットの見え方</label>
           <div class="radio" role="radiogroup" aria-label="プロットの見え方">
             <label><input type="radio" name="sPmView" value="wysi"> <span>見たまま（見出しは大きく、箇条書きは「・」）</span></label>
@@ -424,6 +426,7 @@ body.in-zone #slimeFloat .mini-slime{filter:drop-shadow(0 0 6px rgba(242,196,67,
           <img src="help/plot.jpg" alt="プロットモードの画面" loading="lazy">
           <ul>
             <li>見出しは大きく、箇条書きは「・」「◦」「▪」で、打ったときから仕上がりの見た目で表示します。ファイルには「#」「- 」の付いた md で保存します。記号のまま見たいときは、設定の「プロットモード」で「記号のまま」にします。</li>
+            <li>「見出しへ移動…」（PCは上の段、スマホは下の段）から見出しを選ぶと、そこまで一気に移れます。文字の大きさは、設定の「プロットモード」で本文とは別に選べます。</li>
             <li>ほかのアプリ（チャットAIなど）からコピーした見出し・箇条書きは、貼り付けるとそのまま見出し・箇条書きになります。字下げは4マスにそろえます。番号付きの行は、番号をただの文字として入れます。</li>
             <li>大見出し（#）・中見出し（##）・小見出し（###）。「見出し群 ▾」で見出し1〜6と「記号を外す」。同じ見出しをもう一度押すと外れます。</li>
             <li>「・箇条書き」で行の頭に「- 」。箇条書きの行で改行すると次の行にも付き、何も書かずにもう一度改行すると1段戻ります（いちばん外なら箇条書きが終わります）。行の頭で Backspace を押しても1段戻ります（見出しの行ならふつうの行に）。Ctrl+Z で元に戻せます。</li>
