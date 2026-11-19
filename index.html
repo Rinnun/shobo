@@ -326,6 +326,7 @@ body.in-zone #slimeFloat .mini-slime{filter:drop-shadow(0 0 6px rgba(242,196,67,
       <button data-cat="slime" aria-pressed="false">討伐対象</button>
       <button data-cat="bgm" aria-pressed="false">BGM</button>
       <button data-cat="spark" aria-pressed="false">火花の色</button>
+      <button data-cat="script" aria-pressed="false">おまけ</button>
     </div>
     <p class="note" id="shopHint" style="margin-bottom:12px"></p>
     <div class="goods" id="goods"></div>
@@ -475,6 +476,7 @@ body.in-zone #slimeFloat .mini-slime{filter:drop-shadow(0 0 6px rgba(242,196,67,
             <li>作品ページの表紙をクリックすると開きます。<span class="muted">スマホ：長押しします。</span></li>
             <li>表紙の向き：「縦書き・右開き」か「横書き・左開き」。題字の改行：「魔龍／帰巣録」のように「／」を入れたところで折り返します（背表紙にも使われます）。空欄なら自動です。</li>
             <li>装丁は商店で買います。</li>
+            <li>本棚の右下の「本棚をシェア」で、本棚を画像にしてSNSやLINEに送れます。棚にのせる作品と、題を伏せる字（異世界文字など）は作品ページの「本棚シェア」で作品ごとに選べます。伏せる字は商店の「おまけ」で増やせます。</li>
           </ul>
         </details>
         <details>
@@ -531,6 +533,7 @@ body.in-zone #slimeFloat .mini-slime{filter:drop-shadow(0 0 6px rgba(242,196,67,
 </div>
 <dialog id="dlg"></dialog>
 <script src="bgm-gen.js"></script>
+<script src="fakescript.js"></script>
 <script src="web-cap.js"></script>
 <script src="mdtools.js"></script>
 <script src="api-android.js"></script>

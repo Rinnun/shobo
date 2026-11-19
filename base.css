@@ -467,3 +467,73 @@ html:not(.android) #edSave{min-width:7.2em}
 .pm-jump[hidden]{display:none}
 .pm-jump select{width:100%;background:#15120d;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:5px 8px;font:inherit;font-size:13px}
 .ed-status .pm-jump{flex:1 1 auto;min-width:0;max-width:260px;margin:0 8px}
+/* ---------- v1.1.18 本棚シェア ---------- */
+.shelf-foot{align-items:center;margin-top:6px;gap:12px}
+.shelf-foot .shelf-hint{margin:0}
+.shelf-foot #shelfShare svg{vertical-align:-2px;margin-right:2px}
+.share-field .check{display:flex;align-items:center;gap:6px}
+.share-field select{max-width:180px;padding:4px 8px;font-size:13px}
+.share-field input{accent-color:var(--gold)}
+/* 窓 */
+dialog#dlg:has(.share-dlg){max-width:min(960px,96vw);width:auto}
+.share-dlg{width:min(920px,92vw)}
+.share-grid{display:grid;grid-template-columns:1fr 250px;gap:22px;align-items:start}
+.share-pv{position:relative;min-height:160px;border-radius:6px;box-shadow:0 0 0 1px var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;background:#0c0a07}
+.share-pv img{display:block;width:100%;height:auto;max-height:62vh;object-fit:contain}
+.share-pv.busy img{opacity:.55;transition:opacity .2s}
+.share-pv .share-live{position:absolute;left:0;top:0}
+.share-stats{display:grid;gap:4px}
+.share-dlg input[type=checkbox],.share-dlg input[type=radio]{accent-color:var(--gold)}
+@media (max-width:700px){.share-grid{grid-template-columns:1fr}.share-dlg{width:auto}.share-stats{grid-template-columns:1fr 1fr}}
+.share-full{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px}
+.share-full img{max-width:100%;max-height:78vh;object-fit:contain;-webkit-touch-callout:default;user-select:auto}
+.share-full p{color:var(--ink);font-size:13px;margin:0;text-align:center}
+.share-full.live{justify-content:flex-start;align-items:flex-start;padding:0}
+.share-full.live p{position:fixed;bottom:8px;left:0;right:0;opacity:.7}
+/* カード（画面の外で組んで、画像にする） */
+#shareCard{position:fixed;left:-30000px;top:0;z-index:-1;pointer-events:none}
+#shareCard,.share-live{overflow:hidden;font-family:var(--font-ui);color:var(--ink);background:radial-gradient(120% 90% at 30% 20%,#2a2116 0%,#16120c 55%,#0c0a07 100%)}
+#shareCard.sc-land,.share-live.sc-land{width:1200px;height:675px}
+#shareCard.sc-port,.share-live.sc-port{width:1080px;height:1920px}
+#shareCard .sc-fr,.share-live .sc-fr{position:absolute;inset:18px;border:1px solid rgba(181,136,43,.75);border-radius:6px}
+#shareCard .sc-fr2,.share-live .sc-fr2{position:absolute;inset:25px;border:1px solid rgba(181,136,43,.35);border-radius:4px}
+#shareCard .sc-hd,.share-live .sc-hd{position:absolute;display:flex;align-items:center;gap:16px}
+#shareCard .sc-hd img,.share-live .sc-hd img{width:46px;height:46px;border-radius:8px}
+#shareCard .sc-ttl,.share-live .sc-ttl{font-family:var(--font-display);font-weight:700;font-size:46px;letter-spacing:.08em;color:var(--gold);white-space:nowrap;text-shadow:0 2px 0 rgba(0,0,0,.6),0 0 24px rgba(242,196,67,.18)}
+#shareCard .sc-sub,.share-live .sc-sub{font-size:14px;letter-spacing:.35em;color:var(--gold-deep);margin-top:2px}
+#shareCard .sc-case,.share-live .sc-case{position:absolute;border-radius:8px;background:linear-gradient(180deg,#1d1710,#120e09);box-shadow:inset 0 0 0 1px rgba(181,136,43,.25),inset 0 30px 60px rgba(0,0,0,.45);display:flex;flex-direction:column;padding:40px 14px 16px}
+#shareCard .sc-rows,.share-live .sc-rows{flex:1;display:flex;flex-direction:column;justify-content:center;gap:14px;min-height:0}
+#shareCard .sc-shelf,.share-live .sc-shelf{position:relative;display:flex;align-items:flex-end;justify-content:center;gap:6px;padding:0 20px 22px}
+#shareCard .sc-shelf::after,.share-live .sc-shelf::after{content:"";position:absolute;left:0;right:0;bottom:0;height:20px;border-radius:3px;background:linear-gradient(180deg,#6a4a26,#3b2814 60%,#24180c);box-shadow:0 6px 14px rgba(0,0,0,.6)}
+#shareCard .sc-shelf .spine,.share-live .sc-shelf .spine{flex:0 0 auto;position:relative}
+#shareCard .sc-empty,.share-live .sc-empty{color:rgba(239,230,210,.5);font-size:15px;padding:40px 0}
+#shareCard .sc-more,.share-live .sc-more{position:absolute;right:22px;top:14px;font-size:13px;letter-spacing:.12em;color:rgba(239,230,210,.55)}
+#shareCard .sc-stats,.share-live .sc-stats{position:absolute;display:grid;grid-template-columns:1fr 1fr;column-gap:22px}
+#shareCard .sc-stats.one,.share-live .sc-stats.one{grid-template-columns:1fr}
+#shareCard .sc-st,.share-live .sc-st{border-bottom:1px solid rgba(181,136,43,.28);padding:10px 2px 8px;min-width:0}
+#shareCard .sc-k,.share-live .sc-k{font-size:12.5px;letter-spacing:.14em;color:var(--gold-deep);white-space:nowrap}
+#shareCard .sc-v,.share-live .sc-v{font-family:var(--font-display);font-size:28px;font-weight:700;color:var(--gold);line-height:1.2;white-space:nowrap}
+#shareCard .sc-v small,.share-live .sc-v small{font-size:14px;color:var(--ink);margin-left:4px;font-weight:500}
+#shareCard .sc-stats.one .sc-v,.share-live .sc-stats.one .sc-v{font-size:38px}
+#shareCard .sc-stats.one .sc-v small,.share-live .sc-stats.one .sc-v small{font-size:18px}
+#shareCard .sc-ft,.share-live .sc-ft{position:absolute;font-size:13px;letter-spacing:.2em;color:rgba(239,230,210,.55)}
+/* 横長 */
+.sc-land .sc-hd{left:64px;top:52px}
+.sc-land .sc-case{left:64px;top:156px;width:690px;height:420px}
+.sc-land .sc-case.wide{width:1072px}
+.sc-land .sc-stats{left:784px;top:150px;width:356px}
+.sc-land .sc-ft{right:64px;bottom:48px}
+/* 縦長（スマホの画面いっぱい） */
+.sc-port .sc-hd{left:80px;top:150px}
+.sc-port .sc-ttl{font-size:64px!important}
+.sc-port .sc-sub{font-size:18px!important}
+.sc-port .sc-hd img{width:64px!important;height:64px!important}
+.sc-port .sc-case{left:80px;right:80px;top:300px;height:760px}
+.sc-port .sc-case.wide{height:1400px}
+.sc-port .sc-stats{left:96px;right:96px;top:1110px;column-gap:44px!important}
+.sc-port .sc-st{padding:18px 2px 14px!important}
+.sc-port .sc-k{font-size:19px!important}
+.sc-port .sc-v{font-size:44px!important}
+.sc-port .sc-v small{font-size:22px!important}
+.sc-port .sc-more{font-size:18px!important;right:30px!important;top:18px!important}
+.sc-port .sc-ft{left:0;right:0;bottom:120px;text-align:center;font-size:18px!important}

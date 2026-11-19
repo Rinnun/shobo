@@ -137,7 +137,7 @@ async function workInfo(wid) {
   }
   const isWork = !!stored || files.length > 0;
   if (isWork && (!stored || order.join('\n') !== (m.order || []).join('\n'))) { m.order = order; await writeMeta(wid, m).catch(() => {}); }
-  return { id: wid, title: wid, cover: m.cover || 'kraft', face: m.face === 'lo' ? 'lo' : 'ro', titleBreak: m.titleBreak || '', chapters, hidden, chars, updatedAt, isWork, plot: pkey ? { key: pkey, mode: 'pc' } : null };
+  return { id: wid, title: wid, cover: m.cover || 'kraft', face: m.face === 'lo' ? 'lo' : 'ro', titleBreak: m.titleBreak || '', share: { show: m.share ? m.share.show !== false : true, hide: m.share && typeof m.share.hide === 'string' ? m.share.hide : '' }, chapters, hidden, chars, updatedAt, isWork, plot: pkey ? { key: pkey, mode: 'pc' } : null };
 }
 async function listWorks() {
   await ready;
@@ -184,7 +184,7 @@ async function renameWork(wid, title) {
   return name;
 }
 async function setCover(wid, cover) { const m = await meta(wid); m.cover = cover; await writeMeta(wid, m); }
-async function setFace(wid, o) { const m = await meta(wid); if (o.face !== undefined) m.face = o.face === 'lo' ? 'lo' : 'ro'; if (o.titleBreak !== undefined) m.titleBreak = String(o.titleBreak || '').trim(); await writeMeta(wid, m); }
+async function setFace(wid, o) { const m = await meta(wid); if (o.face !== undefined) m.face = o.face === 'lo' ? 'lo' : 'ro'; if (o.titleBreak !== undefined) m.titleBreak = String(o.titleBreak || '').trim(); if (o.share !== undefined) m.share = { show: o.share.show !== false, hide: String(o.share.hide || '') }; await writeMeta(wid, m); }
 async function setOrder(wid, order) {
   const m = await meta(wid); const hid = (m.order || []).filter(x => (m.hidden || []).includes(x) && !order.includes(x));
   m.order = [...order, ...hid]; await writeMeta(wid, m);
@@ -271,6 +271,24 @@ async function shareFiles(title, files) {
   // No 'title' here: Drive's 「ドライブに保存」 would use it as the file name and drop the extension.
   try { await Share.share({ dialogTitle: title, files: uris }); }
   catch (e) { if (!/cancel/i.test(String(e && e.message))) throw e; return false; }
+  return true;
+}
+
+/* v1.1.18: 本棚シェアのカード（PNG）を共有メニューへ。
+   iPhone（ウェブ）は navigator.share を「タップの直後」に呼ばないと断られるので、ここでは await する前に呼ぶ。
+   blob は画面側で先に作っておいたもの。断られたら false（画面側で「長押しで保存」の表示にする）。 */
+async function shareCard(name, b64, blob) {
+  if (WEB) {
+    const f = new File([blob], name, { type: 'image/png' });
+    if (!navigator.share || (navigator.canShare && !navigator.canShare({ files: [f] }))) return false;
+    try { await navigator.share({ files: [f] }); return true; }
+    catch (e) { if (e && e.name === 'AbortError') return true; return false; }
+  }
+  const p = 'export/' + Date.now() + '/' + name;
+  await FS.writeFile({ path: p, data: b64, directory: CACHE, recursive: true });
+  const uri = (await FS.getUri({ path: p, directory: CACHE })).uri;
+  try { await Share.share({ dialogTitle: '本棚をシェア', files: [uri] }); }
+  catch (e) { if (!/cancel/i.test(String(e && e.message))) throw e; }
   return true;
 }
 
@@ -398,6 +416,7 @@ window.api = {
   importFiles,
   saveText: async (name, text) => shareFiles(M.baseName(name), [{ name, text }]),
   copy: async t => { await Clip.write({ string: String(t) }); return true; },
+  shareCard,
   exportChapters, exportBundle, importBundle,
   readProgress, writeProgress,
   onBeforeClose: cb => App.addListener('pause', () => cb()),

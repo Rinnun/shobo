@@ -61,8 +61,14 @@ const SPARKS = [
   { id: 'murasaki', name: '紫', price: 200, c: '#c6a8ff' },
   { id: 'sakura', name: '桜', price: 200, c: '#ffb3cf' }];
 const ZONE_PAL = ['#ffd761', '#c6a8ff', '#9fe7ff', '#ffb3cf', '#9ff0b8'];
-const catalog = cat => cat === 'cover' ? COVERS : cat === 'slime' ? FOES : cat === 'bgm' ? BGMS : SPARKS;
-const CATS = ['cover', 'slime', 'bgm', 'spark'];
+const catalog = cat => cat === 'cover' ? COVERS : cat === 'slime' ? FOES : cat === 'bgm' ? BGMS : cat === 'script' ? SCRIPTS : SPARKS;
+const CATS = ['cover', 'slime', 'bgm', 'spark', 'script'];
+// v1.1.18: 本棚シェアで題を伏せる字（商店の「おまけ」）。字そのものは fakescript.js。説明の文は鱗雲さん作
+const SCRIPTS = [
+  { id: 'cyr', name: '異世界文字', price: 0, desc: '剣と魔法の世界の文字。', cover: 'enji' },
+  { id: 'wa', name: '和風文字', price: 300, desc: '極東の民の文字。', cover: 'watoji' },
+  { id: 'voy', name: 'ヴォイニッチ風', price: 400, desc: '誰にも読めない古写本の文字。', cover: 'kosho' },
+  { id: 'moji', name: '文字化け', price: 500, desc: '捻じれてひしゃげた異界の文字。', cover: 'madousho' }];
 const BGMS = [
   { id: 'none', name: '無音', price: 0, desc: '静かに書きたいときに。' },
   { id: 'rain', name: '雨の書斎', price: 0, desc: '雨音と、ときどきピアノ。' },
@@ -87,7 +93,7 @@ const workById = id => S.works.find(w => w.id === id);
 function defaults() {
   return {
     coins: 0, totalWritten: 0, goal: 1000, dayStart: 4, daily: {}, kills: {},
-    owned: { cover: ['kraft', 'ai', 'enji'], slime: ['green'], bgm: ['none', 'rain'], spark: ['kin'] },
+    owned: { cover: ['kraft', 'ai', 'enji'], slime: ['green'], bgm: ['none', 'rain'], spark: ['kin'], script: ['cyr'] },
     zone: { count: 0, longest: 0, total: 0 }, zoneDaily: {},
     login: { last: '', streak: 0 }, loginRewards: {}, levelRewards: {},
     equipped: { slime: 'green', bgm: 'rain', spark: 'kin' }, settings: { font: 'mincho', size: 17, lh: 1.95, vol: 0.5, scene: '　＊　＊　＊', exHeading: true, exBr: false, fx: !matchMedia('(prefers-reduced-motion: reduce)').matches, plotDefault: 'auto', plotClean: true, plotFolder: 'folder', foeRandom: false }, createdAt: Date.now()
@@ -752,6 +758,7 @@ async function setView(v) {
   for (const id of ['library', 'editor', 'battle', 'shop', 'settings']) $('#v-' + id).hidden = id !== v;
   document.body.classList.toggle('mode-editor', v === 'editor');
   if (v !== 'editor') { showSlime(false); layoutSide(); }
+  if (v === 'editor' && !PM.on) S.enterEnd = true;
   if (v === 'library') renderLibrary(); if (v === 'editor') renderEditor();
   if (v === 'battle') { renderHP(); renderBattleStats(); } if (v === 'shop') renderShop(); if (v === 'settings') renderSettings();
   window.scrollTo(0, 0);
@@ -873,8 +880,9 @@ function renderLibrary() {
     + `<div class="bookshelf">${tidy ? '' : `<button class="slot-new" id="shelfNew" title="新しい作品" aria-label="新しい作品"><span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4c-6 0-11 4-13 11l-2 5 4-2c7-2 11-7 11-14z"/><path d="M5 19l7-7"/></svg></span></button>`}${S.works.map(w => {
       const sw = spineWidth(w.chars), sh = 200 + hashN(w.id) % 29;
       return `<button class="spine-btn${tidy && S.picked.has(w.id) ? ' picked' : ''}" data-w="${esc(w.id)}" style="--h:${sh}px" aria-pressed="${tidy ? S.picked.has(w.id) : 'false'}" title="${esc(w.title)}　${w.chapters.length}章・${fmt(w.chars)}字">${spineHTML(w.cover, w.title, sw, sh, w.titleBreak)}${tidy ? `<span class="pick-mark" aria-hidden="true">${S.picked.has(w.id) ? '✓' : ''}</span>` : ''}</button>`;
-    }).join('')}</div><p class="shelf-hint muted small">${IS_ANDROID ? '背表紙は書いた文字数に合わせて太く育ちます。' : '背表紙は書いた文字数に合わせて太く育ちます。マウスを乗せると章数と文字数が出ます。'}</p>`;
+    }).join('')}</div><div class="row shelf-foot"><p class="shelf-hint muted small">${IS_ANDROID ? '背表紙は書いた文字数に合わせて太く育ちます。' : '背表紙は書いた文字数に合わせて太く育ちます。マウスを乗せると章数と文字数が出ます。'}</p><span class="spacer"></span>${tidy ? '' : '<button class="btn sm" id="shelfShare"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M12 3v12"/><path d="M7 8l5-5 5 5"/></svg> 本棚をシェア</button>'}</div>`;
   if ($('#shelfNew')) $('#shelfNew').onclick = newWork;
+  if ($('#shelfShare')) $('#shelfShare').onclick = openShare;
   shelf.querySelectorAll('[data-w]').forEach(b => b.addEventListener('click', () => {
     const id = b.dataset.w;
     if (!S.tidy) return openWork(id);
@@ -935,6 +943,7 @@ function renderWork() {
     <div class="field"><label for="wTitle">作品名（フォルダ名）</label><input class="input" id="wTitle" value="${esc(w.title)}"></div>
     ${IS_ANDROID ? '' : '<div class="field plot-field" id="wPlot"></div>'}
     <div class="muted small" style="font-variant-numeric:tabular-nums">${chs.length}章・${fmt(w.chars)}字</div>
+    ${shareFieldHTML(w)}
    </div></div>
   ${IS_ANDROID ? '<div class="field plot-field wide" id="wPlot"></div>' : ''}
   <div class="row"><h3>章</h3><button class="btn sm ghost" id="wSort" title="章の表示順を切り替えます（章の番号は変わりません）">${P().settings.chDesc ? '↓ 最新話から' : '↑ 1話から'}</button><span class="spacer"></span>${chs.length ? `<button class="btn sm ghost" id="wPick" aria-pressed="${!!S.chPick}">${S.chPick ? '選ぶのをやめる' : '選ぶ'}</button>` : ''}${chs.length && !S.chPick ? `<button class="btn sm gold" id="wLatest">最新話を書く</button>` : ''}<button class="btn sm" id="wAdd">章を追加</button><button class="btn sm" id="wImp">mdを取り込む</button></div>
@@ -1001,6 +1010,7 @@ function renderWork() {
     catch (e) { fileErr(e, 'ごみ箱へ移動できませんでした'); }
   }));
   $('#wBack').onclick = () => { S.openWork = null; S.chPick = null; renderLibrary(); };
+  bindShareField(w);
   $('#wFolder').onclick = () => api.openFolder(wid);
   $('#wTitle').addEventListener('change', async e => {
     const v = e.target.value.trim() || '無題の物語'; if (v === w.title) return;
@@ -1224,13 +1234,28 @@ async function renderEditor() {
       const r = await api.readChapter(w.id, ch.id);
       if (loadingKey !== key) return;
       edText.value = r.text; loaded.key = key; loaded.mtime = r.mtime; baseLen = countChars(r.text); dirty = false; setSave('');
-      edText.focus(); edText.setSelectionRange(edText.value.length, edText.value.length);
+      edText.focus(); caretToEnd(); askEnd();
     } catch (e) { fileErr(e, '章を開けませんでした'); }
     finally { if (loadingKey === key) loadingKey = null; }
   }
+  else if (S.enterEnd && loaded.key === key) { edText.focus({ preventScroll: true }); caretToEnd(); askEnd(); }
+  S.enterEnd = false;
   setCount();
   sideRender();
 }
+/* v1.1.18: 本文を書き始めるときは、キャレットを一番下に置いて、欄も一番下まで動かす（小松竹さんの要望）。
+   章を開いたとき・ほかの画面から「執筆」に来たときに一律でそうする。
+   スマホは最初のタップでキャレットがタップした場所に移り、キーボードが出ると欄が縮んで一番下が隠れるので、
+   開いてから最初のタップのあとと、キーボードが出たあとにもう一度だけ一番下へ戻す（2回目からのタップはふつうに動く）。 */
+let endUntil = 0, endTap = false;
+function caretToEnd() { const n = edText.value.length; edText.setSelectionRange(n, n); edText.scrollTop = edText.scrollHeight; }
+function askEnd() { endTap = true; endUntil = performance.now() + 1500; }
+edText.addEventListener('pointerup', e => {
+  if (!endTap || e.pointerType === 'mouse' || PM.on) return;
+  endTap = false; endUntil = performance.now() + 1500;   // キーボードが出るまで、もう少し見張る
+  setTimeout(caretToEnd, 0); setTimeout(caretToEnd, 350);
+});
+edText.addEventListener('keydown', () => { endTap = false; endUntil = 0; });
 // 400-character manuscript sheets: 20 cells a line, a new line at every line break, an empty line counts as a line
 function genkoSheets(text) { if (!String(text).trim()) return 0; let lines = 0; for (const l of String(text).replace(/\r/g, '').split('\n')) lines += Math.max(1, Math.ceil(Array.from(l).length / 20)); return lines / 20; }
 function setCount(t) { const v = edText.value; if (PM.on) { $('#edCount').textContent = fmt(countChars(t ?? pmText())) + '字'; return; } $('#edCount').innerHTML = fmt(countChars(v)) + '字<span class="genko">原稿用紙 約' + (Math.round(genkoSheets(v) * 10) / 10).toFixed(1) + '枚</span>'; }
@@ -2489,7 +2514,7 @@ function renderShop() {
   document.querySelectorAll('#shopSeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.cat === cat));
   const list = catalog(cat);
   const owned = p.owned[cat];
-  $('#shopHint').textContent = { cover: '買った装丁は、書斎の作品ページで背表紙を' + (IS_ANDROID ? '長押し' : 'クリック') + 'すると選べます。', slime: '選んだ討伐対象が毎日あらわれます。設定で「持っているものから毎日ランダム」にもできます。', bgm: '「▶ 試聴」で20秒ほど聞けます。買った曲を選んで、上の「♪ BGM」で再生します。', spark: '打つたびに散る火花の色です。ゾーンに入ると、選んだ色にほかの色が混ざって華やかになります。' }[cat];
+  $('#shopHint').textContent = { cover: '買った装丁は、書斎の作品ページで背表紙を' + (IS_ANDROID ? '長押し' : 'クリック') + 'すると選べます。', slime: '選んだ討伐対象が毎日あらわれます。設定で「持っているものから毎日ランダム」にもできます。', bgm: '「▶ 試聴」で20秒ほど聞けます。買った曲を選んで、上の「♪ BGM」で再生します。', spark: '打つたびに散る火花の色です。ゾーンに入ると、選んだ色にほかの色が混ざって華やかになります。', script: '本棚をシェアするときに、題を伏せる字です。作品ページの「本棚シェア」で、作品ごとに選べます。異世界文字は初めから使えます。' }[cat];
   let grp = null;
   $('#goods').innerHTML = list.map(it => {
     const head = it.grp && it.grp !== grp && GROUPS[it.grp] ? `<div class="grp-h"><h3>${GROUPS[it.grp][0]}</h3><span class="muted small">${GROUPS[it.grp][1]}</span></div>` : ''; grp = it.grp;
@@ -2497,14 +2522,16 @@ function renderShop() {
     let pv = '';
     if (cat === 'cover') pv = spineHTML(it.id, it.name, 34, 88);
     else if (cat === 'slime') pv = `<canvas width="96" height="72" data-sl="${it.id}"${isMonster(it.id) ? ' class="mon"' : ''}></canvas>`;
+    else if (cat === 'script') pv = fakeSpine(it.cover, '蛇喰鷲書房', 34, 88, it.id);
     else if (cat === 'spark') pv = `<div class="spark-pv">${[3, 5, 2, 4, 3].map((s, i) => `<i style="width:${s * 2}px;height:${s * 2}px;background:${it.c};box-shadow:0 0 ${s * 3}px ${it.c};opacity:${0.55 + i % 2 * 0.4}"></i>`).join('')}</div>`;
     else pv = `<div class="wave">${Array.from({ length: 12 }, (_, i) => `<i style="height:${it.id === 'none' ? 4 : 8 + Math.round(Math.abs(Math.sin((i + 1) * (it.id.length + 1))) * 28)}px;animation-delay:${-(i * 0.37 % 1).toFixed(2)}s"></i>`).join('')}</div>`
       + (it.id === 'none' ? '' : `<button class="pv-play" data-pv="${it.id}" aria-pressed="${PV.id === it.id}">${PV.id === it.id ? '■ 止める' : '▶ 試聴'}</button>`);
     const act = !own ? `<button class="btn sm gold" data-buy="${it.id}" ${p.coins < it.price ? 'disabled' : ''}><span class="coin"></span> ${fmt(it.price)}で買う</button>`
-      : cat === 'cover' ? `<span class="muted small">所持</span>`
+      : cat === 'cover' || cat === 'script' ? `<span class="muted small">所持</span>`
         : on ? `<span class="small" style="color:var(--gold)">使用中</span>` : `<button class="btn sm" data-eq="${it.id}">使う</button>`;
     return head + `<div class="good ${on ? 'on' : ''}"><div class="pv${cat === 'bgm' ? ' bgm' : ''}${cat === 'bgm' && PV.id === it.id ? ' playing' : ''}">${pv}</div><div class="nm">${esc(it.name)}</div>${it.desc ? `<div class="muted small">${esc(it.desc)}</div>` : ''}<div class="pr">${own ? '' : `<span class="coin"></span>${fmt(it.price)}`}</div>${act}</div>`;
   }).join('');
+  fakeTitles($('#goods'));
   $('#goods').querySelectorAll('canvas[data-sl]').forEach(cv => { const v = new SlimeView(cv, { static: true }); v.color = cv.dataset.sl; v.draw(1200); });
   $('#goods').querySelectorAll('[data-buy]').forEach(b => b.addEventListener('click', () => buy(cat, b.dataset.buy)));
   $('#goods').querySelectorAll('[data-eq]').forEach(b => b.addEventListener('click', () => equip(cat, b.dataset.eq)));
@@ -2678,6 +2705,8 @@ if (window.visualViewport) {
   const pin = () => { if (IS_WEB && document.body.classList.contains('mode-editor') && document.body.classList.contains('kb-open') && (window.scrollY || vv.offsetTop)) window.scrollTo(0, 0); };
   const upd = () => { document.documentElement.style.setProperty('--vvh', vv.height + 'px'); document.body.classList.toggle('kb-open', window.innerHeight - vv.height > 120 || (IS_ANDROID && screen.height - vv.height > screen.height * 0.3)); pin(); requestAnimationFrame(pin); };
   vv.addEventListener('resize', upd); vv.addEventListener('scroll', pin); upd();
+  // v1.1.18: 開いた直後にキーボードが出て欄が縮んだら、もう一度一番下へ（キャレットが最後にあるときだけ）
+  vv.addEventListener('resize', () => { if (!PM.on && performance.now() < endUntil && edText.selectionStart === edText.value.length) requestAnimationFrame(caretToEnd); });
   if (IS_WEB) document.addEventListener('focusin', e => { if (e.target === edText || (e.target.closest && e.target.closest('#pmEd'))) { setTimeout(pin, 60); setTimeout(pin, 350); } });
 }
 if (api.onBack) api.onBack(() => {
@@ -2732,6 +2761,225 @@ if (api.relocatePick) $('#sMove').addEventListener('click', async () => {
     });
   });
 });
+
+/* ---------- v1.1.18 本棚シェア ----------
+   本棚をカード（PNG）にして、SNS や LINE に送れるようにする。横長 1200×675／縦長 1080×1920。
+   - 棚にのせる作品と題の伏せ方（異世界文字・和風文字・ヴォイニッチ風・文字化け）は作品ごとに作品ページで選ぶ（_作品情報.json の share）
+   - 数字はうそをつかない：のせていない作品も数える。そのかわり棚に「ほか○作は棚にのせていません」と出す
+   - カードは画面の外に本物の背表紙で組んで、SVG の foreignObject に入れて canvas に描く（使った字の分だけフォントを埋め込む）
+   - PC は保存・コピー。スマホと iPhone 版は共有メニュー。iPhone で画像にできない・共有できないときは「長押しで保存」の表示 */
+const SH_STATS = [['works', '作品'], ['chars', '本棚の文字数'], ['genko', '原稿用紙にすると'], ['level', '書き手のレベル'], ['written', 'このアプリで書いた字'],
+  ['kills', '討伐した数'], ['streak', '連続討伐'], ['zoneN', 'ゾーンに入った回数'], ['zoneMax', 'いちばん長いゾーン'], ['zoneSum', 'ゾーンの合計']];
+function shareCfg() {
+  const s = P().settings.share || {};
+  return { name: String(s.name || ''), lay: s.lay === 'port' ? 'port' : 'land', stats: { ...Object.fromEntries(SH_STATS.map(([k]) => [k, true])), ...(s.stats || {}) } };
+}
+function workShare(w) {
+  const s = w.share || {}; let hide = typeof s.hide === 'string' ? s.hide : '';
+  if (hide && !SCRIPTS.some(x => x.id === hide)) hide = '';
+  if (hide && !(P().owned.script || []).includes(hide)) hide = 'cyr';   // 持っていない字（引き継ぎなどで）なら異世界文字で伏せる
+  return { show: s.show !== false, hide };
+}
+// 背表紙（伏せ字つき）。文字化けはふつうの字なので題字として書く。ほかの字は fakeTitles() が DOM に入れたあとで重ねる
+function fakeSpine(cover, title, w, h, mode, brk) {
+  if (!mode) return spineHTML(cover, title, w, h, brk);
+  if (mode === 'moji') return spineHTML(cover, FAKE.mojibake(title), w, h, '');
+  return spineHTML(cover, title, w, h, brk).replace('<div class="spine', `<div data-fake="${mode}" data-t="${esc(title)}" data-c="${esc(cover)}" class="spine`);
+}
+function fakeTitles(root) {
+  root.querySelectorAll('.spine[data-fake]').forEach(sp => {
+    if (sp.querySelector('.fk')) return;
+    const t = sp.querySelector('.sp-title'); if (!t) return;
+    const mode = sp.dataset.fake, title = sp.dataset.t.replace(/\s/g, ''), W = sp.offsetWidth, H = sp.offsetHeight;
+    const cs = getComputedStyle(t), col = cs.color;
+    // 題箋や札のある装丁は、その地を残して中に書く。ほかは題字が始まる位置から、題字に使ってよい長さの中に
+    const lab = sp.classList.contains('sp-label') || cs.backgroundColor !== 'rgba(0, 0, 0, 0)' || cs.backgroundImage !== 'none';
+    const [ratio, padv] = TITLE_ROOM[sp.dataset.c] || [0.64, LABELED.includes(sp.dataset.c) ? 12 : 0];
+    let top = 0, el = t; while (el && el !== sp) { top += el.offsetTop; el = el.offsetParent; }
+    const room = lab ? t.offsetHeight - 10 : H * ratio - padv - 6;
+    t.style.color = 'transparent'; t.style.textShadow = 'none';
+    const f = document.createElement('div'); f.className = 'fk'; f.setAttribute('aria-hidden', 'true');
+    let fw, fh, rot = '';
+    if (mode === 'wa') {   // 縦に積む
+      const g = FAKE.svgV(title); fw = Math.min(W * 0.42, 15); fh = g.h * fw / g.w; if (fh > room) { fh = room; fw = fh * g.w / g.h; } f.innerHTML = g.html;
+    } else {               // 洋書のように横倒し
+      const g = FAKE.svg(title, mode === 'voy' ? 'voy' : 'cyr'); let th = Math.min(W * 0.4, 15), len = g.w * th / g.h; if (len > room) { len = room; th = len * g.h / g.w; }
+      f.innerHTML = g.html; fw = len; fh = th; rot = ' rotate(90deg)';
+    }
+    const along = rot ? fw : fh, cy = lab ? top + t.offsetHeight / 2 : top + along / 2;
+    f.style.cssText = `position:absolute;z-index:3;left:50%;top:${cy}px;width:${fw}px;height:${fh}px;color:${col};transform:translate(-50%,-50%)${rot};pointer-events:none`;
+    sp.appendChild(f);
+  });
+}
+// ---- 作品ページの「本棚シェア」 ----
+function shareFieldHTML(w) {
+  const ws = workShare(w), own = P().owned.script || ['cyr'];
+  const opts = [['', 'そのまま'], ...SCRIPTS.filter(x => own.includes(x.id)).map(x => [x.id, x.name])];
+  return `<div class="field share-field"><label>本棚シェア</label>
+    <label class="check"><input type="checkbox" id="wShShow"${ws.show ? ' checked' : ''}> カードの棚にのせる</label>
+    <div class="row" style="gap:8px;align-items:center;flex-wrap:nowrap"><span class="small">題</span><select class="input sm" id="wShHide">${opts.map(([v, n]) => `<option value="${v}"${v === ws.hide ? ' selected' : ''}>${n}</option>`).join('')}</select></div>
+    <div class="muted small">のせなくても、作品数や文字数には数えます。${own.length < SCRIPTS.length ? 'ほかの伏せ字は商店の「おまけ」にあります。' : ''}</div></div>`;
+}
+function bindShareField(w) {
+  const show = $('#wShShow'), hide = $('#wShHide'); if (!show) return;
+  // 続けて変えても追い越さないよう、保存は順番に。保存するときのいちばん新しい値を書く
+  let q = Promise.resolve();
+  const save = () => { q = q.then(async () => {
+    const v = { show: show.checked, hide: hide.value };
+    try { await api.setFace(w.id, { share: v }); w.share = v; } catch (e) { fileErr(e, '本棚シェアの設定を保存できませんでした'); }
+  }); clearTimeout(save.t); save.t = setTimeout(() => q.then(() => refreshWorks(true)), 400); };
+  show.addEventListener('change', save); hide.addEventListener('change', save);
+}
+// ---- 数字（原稿用紙は章の中身から数える。章の更新日時が同じなら前に数えた値を使う） ----
+const genkoCache = new Map();
+async function genkoTotal(works) {
+  let sum = 0;
+  for (const w of works) for (const ch of w.chapters || []) {
+    const key = w.id + '/' + ch.id, c = genkoCache.get(key);
+    if (c && c.mtime === ch.mtime) { sum += c.v; continue; }
+    try { const r = await api.readChapter(w.id, ch.id); const v = genkoSheets(r.text); genkoCache.set(key, { mtime: ch.mtime, v }); sum += v; } catch (e) {}
+  }
+  return sum;
+}
+async function shareStats(works) {
+  const p = P(), x = xpInfo(p.totalWritten);
+  const chars = works.reduce((a, w) => a + (w.chars || 0), 0);
+  return { works: [fmt(works.length), '作'], chars: [fmt(chars), '字'], genko: ['約' + fmt(Math.round(await genkoTotal(works))), '枚'], level: ['Lv ' + x.lv, titleOf(x.lv)],
+    written: [fmt(p.totalWritten), '字'], kills: [fmt(Object.keys(p.kills).length), '体'], streak: [fmt(currentStreak()), '日'],
+    zoneN: [fmt(p.zone.count), '回'], zoneMax: [mmss(p.zone.longest), ''], zoneSum: [mmss(p.zone.total), ''] };
+}
+// ---- カードを組む（画面の外に置く） ----
+const CARD = { land: { W: 1200, H: 675, kmax: 1.5 }, port: { W: 1080, H: 1920, kmax: 2.3 } };
+async function buildCard() {
+  const cfg = shareCfg(), L = CARD[cfg.lay], all = S.works.slice(), shown = all.filter(w => workShare(w).show);
+  const st = await shareStats(all), d = new Date();
+  const old = $('#shareCard'); if (old) old.remove();
+  const el = document.createElement('div'); el.id = 'shareCard'; el.className = 'sc-' + cfg.lay;
+  const keys = SH_STATS.filter(([k]) => cfg.stats[k]);
+  el.innerHTML = `<div class="sc-fr"></div><div class="sc-fr2"></div>
+    <div class="sc-hd"><img src="icon.png" alt=""><div><div class="sc-ttl">${esc(cfg.name.trim() ? cfg.name.trim() + 'の本棚' : 'わたしの本棚')}</div><div class="sc-sub">蛇喰鷲書房</div></div></div>
+    <div class="sc-case${keys.length ? '' : ' wide'}">${shown.length < all.length ? `<div class="sc-more">ほか ${all.length - shown.length} 作は棚にのせていません</div>` : ''}<div class="sc-rows"></div></div>
+    ${keys.length ? `<div class="sc-stats${keys.length <= 4 && cfg.lay === 'land' ? ' one' : ''}">${keys.map(([k, n]) => `<div class="sc-st"><div class="sc-k">${n}</div><div class="sc-v">${esc(st[k][0])}<small>${esc(st[k][1])}</small></div></div>`).join('')}</div>` : ''}
+    <div class="sc-ft">${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())}</div>`;
+  document.body.appendChild(el);
+  // 棚の段の数：背表紙がいちばん大きく見える段数（1〜4段）
+  const rowsEl = el.querySelector('.sc-rows'), CW = rowsEl.clientWidth - 40, CH = rowsEl.clientHeight;
+  const items = shown.map(w => ({ w, sw: spineWidth(w.chars), sh: 200 + hashN(w.id) % 29 }));
+  let best = { k: 0, rows: [] };
+  if (items.length) for (let r = 1; r <= Math.min(4, items.length); r++) {
+    const total = items.reduce((a, it) => a + it.sw + 6, 0), rows = []; let cur = [], acc = 0;
+    for (const it of items) { if (cur.length && acc + it.sw > total / r * 1.02 && rows.length < r - 1) { rows.push(cur); cur = []; acc = 0; } cur.push(it); acc += it.sw + 6; }
+    rows.push(cur);
+    const maxW = Math.max(...rows.map(rw => rw.reduce((a, it) => a + it.sw + 6, 0))), maxH = Math.max(...items.map(it => it.sh));
+    const k = Math.min(L.kmax, CW / maxW, (CH - r * 22 - (r - 1) * 14) / r / maxH);
+    if (k > best.k * 1.08) best = { k, rows };
+  }
+  rowsEl.innerHTML = best.rows.map(rw => `<div class="sc-shelf">${rw.map(it => fakeSpine(it.w.cover, it.w.title, Math.round(it.sw * best.k), Math.round(it.sh * best.k), workShare(it.w).hide, it.w.titleBreak)).join('')}</div>`).join('')
+    || '<div class="sc-shelf"><span class="sc-empty">まだ棚にのせた作品はありません</span></div>';
+  fakeTitles(el);
+  return { el, W: L.W, H: L.H };
+}
+// ---- カードを PNG に（SVG の foreignObject → canvas）。使った字の分だけフォントを埋め込む ----
+const fontData = new Map();
+function readBin(url) {
+  return new Promise((res, rej) => { const x = new XMLHttpRequest(); x.open('GET', url); x.responseType = 'arraybuffer'; x.onload = () => (x.status === 200 || x.status === 0) && x.response ? res(x.response) : rej(new Error('font ' + x.status)); x.onerror = () => rej(new Error('font')); x.send(); });
+}
+function toB64(buf) { let s = ''; const u = new Uint8Array(buf); for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); }
+async function cardPNG(card) {
+  const { el, W, H } = card, used = new Set();
+  for (const ch of el.textContent) used.add(ch.codePointAt(0)); for (let c = 0x20; c < 0x7f; c++) used.add(c);
+  const hit = ur => ur.split(',').some(p => { const m = p.trim().replace(/^U\+/i, '').split('-'), a = parseInt(m[0], 16), b = m[1] ? parseInt(m[1], 16) : a; for (const c of used) if (c >= a && c <= b) return true; return false; });
+  let css = ''; const fonts = [];
+  for (const sh of document.styleSheets) {
+    let rules; try { rules = sh.cssRules; } catch (e) { continue; }
+    for (const r of rules) {
+      if (r instanceof CSSFontFaceRule) {
+        const ur = r.style.getPropertyValue('unicode-range'), m = r.style.getPropertyValue('src').match(/url\(["']?([^"')]+)["']?\)/);
+        if (!m || (ur && !hit(ur))) continue;
+        const url = new URL(m[1], sh.href || location.href).href;
+        fonts.push((fontData.has(url) ? Promise.resolve(fontData.get(url)) : readBin(url).then(b => { const v = toB64(b); fontData.set(url, v); return v; }))
+          .then(v => r.cssText.replace(m[0], `url(data:font/woff2;base64,${v})`)).catch(() => ''));
+      } else css += r.cssText + '\n';
+    }
+  }
+  const ff = (await Promise.all(fonts)).join('\n');
+  const clone = el.cloneNode(true);
+  for (const img of clone.querySelectorAll('img')) {   // 画像（羽ペン）も埋め込む
+    const src = el.querySelector('img'); try { if (!src.complete) await new Promise(r => { src.onload = r; src.onerror = r; }); const c = document.createElement('canvas'); c.width = src.naturalWidth; c.height = src.naturalHeight; c.getContext('2d').drawImage(src, 0, 0); img.src = c.toDataURL('image/png'); } catch (e) { img.remove(); }
+  }
+  const x = t => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}"><foreignObject x="0" y="0" width="${W}" height="${H}"><div xmlns="http://www.w3.org/1999/xhtml" style="width:${W}px;height:${H}px;position:relative;overflow:hidden"><style>${x(ff + '\n' + css + '\n#shareCard{position:absolute!important;left:0!important;top:0!important}')}</style>${new XMLSerializer().serializeToString(clone)}</div></foreignObject></svg>`;
+  const img = new Image();
+  await new Promise((res, rej) => { img.onload = res; img.onerror = () => rej(new Error('svg')); setTimeout(() => rej(new Error('timeout')), 20000); img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg); });   // blob: はアプリの安全設定で使えない
+  await new Promise(r => setTimeout(r, 50));
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H; cv.getContext('2d').drawImage(img, 0, 0, W, H);
+  const url = cv.toDataURL('image/png');   // iPhone（Safari）ではここで断られることがある
+  const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+  return { url, b64: url.split(',')[1], blob };
+}
+// ---- シェアの窓 ----
+let shareJob = 0;
+function openShare() {
+  const cfg = shareCfg(), phone = IS_ANDROID;
+  openDlg(`<div class="dlg share-dlg">
+    <h3 style="margin:0">本棚をシェア</h3>
+    <div class="share-grid">
+      <div><div class="share-pv" id="shPv"><span class="muted small">カードを作っています…</span></div>
+        <p class="muted small" style="margin:8px 0 0">棚にのせる作品と、題を伏せるかどうかは、作品ページの「本棚シェア」で選べます。数字は、のせていない作品も含めた本当の数です。</p></div>
+      <div class="stack" style="gap:12px">
+        <div class="field"><label for="shName">名前</label><input class="input" id="shName" maxlength="20" value="${esc(cfg.name)}" placeholder="空なら「わたしの本棚」"></div>
+        <div class="field"><label>形</label><div class="row" style="gap:14px"><label class="check"><input type="radio" name="shLay" value="land"${cfg.lay === 'land' ? ' checked' : ''}> 横長</label><label class="check"><input type="radio" name="shLay" value="port"${cfg.lay === 'port' ? ' checked' : ''}> 縦長（スマホの画面いっぱい）</label></div></div>
+        <div class="field"><label>のせる数字</label><div class="share-stats">${SH_STATS.map(([k, n]) => `<label class="check small"><input type="checkbox" data-st="${k}"${cfg.stats[k] ? ' checked' : ''}> ${n}</label>`).join('')}</div></div>
+      </div>
+    </div>
+    <div class="row"><span class="spacer"></span><button class="btn ghost" data-close>閉じる</button>
+      ${phone ? '<button class="btn gold" id="shShare" disabled>共有・保存</button>' : '<button class="btn" id="shCopy" disabled>画像をコピー</button><button class="btn gold" id="shSave" disabled>画像を保存</button>'}</div></div>`, d => {
+    let png = null, timer = 0;
+    const name = () => '蛇喰鷲書房_本棚_' + dayKey().replace(/-/g, '') + '.png';
+    const render = async () => {
+      const job = ++shareJob; png = null; d.querySelectorAll('#shShare,#shCopy,#shSave').forEach(b => b.disabled = true);
+      const pv = d.querySelector('#shPv'); pv.classList.add('busy');
+      let card = null;
+      try {
+        card = await buildCard(); const r = await cardPNG(card); if (job !== shareJob) return;
+        png = r; pv.innerHTML = `<img alt="本棚のカード" src="${r.url}">`; d.querySelectorAll('#shShare,#shCopy,#shSave').forEach(b => b.disabled = false);
+      } catch (e) {
+        if (job !== shareJob) return;
+        // 画像にできなかった（iPhone の Safari など）：カードをそのまま見せて、スクリーンショットで保存してもらう
+        pv.innerHTML = ''; if (card) { const c = card.el.cloneNode(true); c.removeAttribute('id'); c.className = 'share-live sc-' + shareCfg().lay; c.id = 'shareLive'; pv.appendChild(c); fitLive(pv); }
+        pv.insertAdjacentHTML('beforeend', '<p class="muted small" style="margin:8px 0 0">この端末では画像にできませんでした。カードを画面いっぱいに出して、スクリーンショットで保存してください。</p><button class="btn sm" id="shFull">画面いっぱいに出す</button>');
+        pv.querySelector('#shFull').addEventListener('click', () => showFull(card));
+      } finally { if (card) card.el.remove(); pv.classList.remove('busy'); }
+    };
+    const later = () => { clearTimeout(timer); timer = setTimeout(render, 250); };
+    const save = () => { P().settings.share = { name: d.querySelector('#shName').value.trim(), lay: d.querySelector('[name=shLay]:checked').value, stats: Object.fromEntries([...d.querySelectorAll('[data-st]')].map(c => [c.dataset.st, c.checked])) }; saveProgress(); later(); };
+    d.querySelector('#shName').addEventListener('input', save);
+    d.querySelectorAll('[name=shLay],[data-st]').forEach(c => c.addEventListener('change', save));
+    if (d.querySelector('#shSave')) d.querySelector('#shSave').addEventListener('click', async () => { if (!png) return; try { if (await api.saveCard(png.b64, name())) toast('本棚の画像を保存しました'); } catch (e) { fileErr(e, '画像を保存できませんでした'); } });
+    if (d.querySelector('#shCopy')) d.querySelector('#shCopy').addEventListener('click', async () => { if (!png) return; try { await api.copyCard(png.b64); toast('本棚の画像をコピーしました。SNS や LINE に貼り付けられます'); } catch (e) { fileErr(e, '画像をコピーできませんでした'); } });
+    if (d.querySelector('#shShare')) d.querySelector('#shShare').addEventListener('click', () => {
+      if (!png) return;
+      // iPhone は「タップの直後」でないと共有メニューが開かないので、ここでは待たずに呼ぶ
+      api.shareCard(name(), png.b64, png.blob).then(ok => { if (!ok) showImg(png.url); }).catch(e => fileErr(e, '共有できませんでした'));
+    });
+    render();
+  });
+}
+function fitLive(box) { const c = box.querySelector('#shareLive'); if (!c) return; const s = box.clientWidth / c.offsetWidth; c.style.transform = `scale(${s})`; c.style.transformOrigin = '0 0'; box.style.height = c.offsetHeight * s + 'px'; }
+// 共有できなかったとき：画像を大きく出して、長押しで保存してもらう
+function showImg(url) {
+  const o = document.createElement('div'); o.className = 'share-full';
+  o.innerHTML = `<img alt="本棚のカード" src="${url}"><p>${IS_WEB ? '画像を長押しすると、「写真に追加」で保存できます。' : '画像を長押しすると保存できます。'}</p><button class="btn">閉じる</button>`;
+  o.querySelector('button').addEventListener('click', () => o.remove()); document.body.appendChild(o);
+}
+// 画像にできなかったとき：カードを画面いっぱいに（スクリーンショット用）
+function showFull(card) {
+  const o = document.createElement('div'); o.className = 'share-full live'; const c = card.el.cloneNode(true); c.id = 'shareLive'; c.className = 'share-live sc-' + shareCfg().lay;
+  o.appendChild(c); o.insertAdjacentHTML('beforeend', '<p>スクリーンショットで保存してください。画面をタップすると閉じます。</p>');
+  document.body.appendChild(o);
+  const s = Math.min(innerWidth / card.W, (innerHeight - 40) / card.H); c.style.transform = `scale(${s})`; c.style.transformOrigin = '0 0'; c.style.width = card.W + 'px'; c.style.height = card.H + 'px';
+  o.addEventListener('click', () => o.remove());
+}
 
 /* ---------- BGM (generated with Web Audio; no audio files) ---------- */
 const BGM = {
