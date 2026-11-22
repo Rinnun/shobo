@@ -650,3 +650,10 @@ body.reading{overflow:hidden}
 /* ラムネ：表紙に瓶のガラスに映る光の筋を2本 */
 .fcover.sp-ramune.ro .cv-art{inset:0;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.75) 35%,rgba(255,255,255,.9) 50%,rgba(255,255,255,.4) 70%,rgba(255,255,255,0)) 19.8% 0/9% 100% no-repeat,linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.75) 35%,rgba(255,255,255,.9) 50%,rgba(255,255,255,.4) 70%,rgba(255,255,255,0)) 30.9% 0/3% 100% no-repeat}
 .fcover.sp-ramune.lo .cv-art{inset:0;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.75) 35%,rgba(255,255,255,.9) 50%,rgba(255,255,255,.4) 70%,rgba(255,255,255,0)) 84.6% 0/9% 100% no-repeat,linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.75) 35%,rgba(255,255,255,.9) 50%,rgba(255,255,255,.4) 70%,rgba(255,255,255,0)) 73.2% 0/3% 100% no-repeat}
+/* 1.1.22：札のある背表紙で題字を2列に分けたとき、1列目が上にはみ出していた。2列目を1字下げる仕掛け（.tf.al-stag の上の余白1字分）を、札の余白が消していたため。札の余白に1字分を足して戻す。 */
+.spine.sp-label .sp-title.tf.al-stag:not(.manual),.spine.sp-aozora .sp-title.tf.al-stag:not(.manual),.spine.sp-kosho .sp-title.tf.al-stag:not(.manual),.spine.sp-ryurin .sp-title.tf.al-stag:not(.manual){padding-top:calc(6px + 1em)}
+.spine.sp-shinokemuri .sp-title.tf.al-stag:not(.manual){padding-top:calc(7px + 1em)}
+.spine.sp-watoji .sp-title.tf.al-stag:not(.manual){padding-top:calc(8px + 1em)}
+/* 1.1.22：背表紙の題字は、当てはめ（fitTitleBox）で決めた長さ（--tfh）で折り返す。前は背表紙の高さいっぱいまで1列に伸びて、魔導書の紋章や古書の革の段に重なっていた。札の余白は長さに入れない（content-box）。 */
+.spine .sp-title.tf{box-sizing:content-box;max-height:var(--tfh,none)}
+.spine .sp-title.tf.al-stag:not(.manual){max-height:calc(var(--tfh,100vh) - 1em)}

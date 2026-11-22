@@ -846,8 +846,10 @@ function spineHTML(id, title, w, h, brk) {
   let t = '';
   if (title) {
     const [ratio, padv] = TITLE_ROOM[id] || [0.64, LABELED.includes(id) ? 12 : 0];
-    const r = fitTitleBox({ title, brk: brk || '', v: true, w: Math.max(10, w - 8 - (LABEL_TITLE.includes(id) ? 6 : 0)), h: Math.max(20, Math.floor(h * ratio - padv)), max: fs, oneMin: Math.min(fs, 11), min: 9, ls: 0.06, al: TITLE_ALIGN });
-    t = `<span class="sp-title ${r.cls}" style="font-size:${r.f}px;letter-spacing:.06em">${r.inner}</span>`;
+    const room = Math.max(20, Math.floor(h * ratio - padv));
+    const r = fitTitleBox({ title, brk: brk || '', v: true, w: Math.max(10, w - 8 - (LABEL_TITLE.includes(id) ? 6 : 0)), h: room, max: fs, oneMin: Math.min(fs, 11), min: 9, ls: 0.06, al: TITLE_ALIGN });
+    // --tfh: the length the fit was made for. base.css keeps the title to it, so it breaks where the fit broke it (1.1.22)
+    t = `<span class="sp-title ${r.cls}" style="font-size:${r.f}px;letter-spacing:.06em;--tfh:${room}px">${r.inner}</span>`;
   }
   return `<div class="spine sp-${id}${LABELED.includes(id) ? ' sp-label' : ''}" style="--w:${w}px;--h:${h}px;--fs:${fs}px"><span class="sp-deco"></span>${t}</div>`;
 }
