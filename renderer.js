@@ -31,7 +31,8 @@ const COVERS = [
   { id: 'seigaiha', name: '青海波', price: 400, grp: 'deco' }, { id: 'watoji', name: '和綴じ', price: 400, grp: 'deco' }, { id: 'kosho', name: '古書', price: 500, grp: 'deco' },
   { id: 'kinpaku', name: '金箔', price: 600, grp: 'deco' }, { id: 'madousho', name: '魔導書', price: 700, grp: 'deco' },
   { id: 'seizu', name: '星図', price: 700, grp: 'deco' }, { id: 'ryurin', name: '竜鱗', price: 900, grp: 'deco' },
-  { id: 'aozora', name: '青空', price: 600, grp: 'deco' }, { id: 'ramune', name: 'ラムネ', price: 600, grp: 'deco' }];
+  { id: 'aozora', name: '青空', price: 600, grp: 'deco' }, { id: 'ramune', name: 'ラムネ', price: 600, grp: 'deco' },
+  { id: 'shinokemuri', name: '死の煙', price: 800, grp: 'deco' }];
 const SLIMES = [
   { id: 'green', name: '若葉', price: 0, grp: 'slime', c: ['#5cc46b', '#c9f2c4', '#22703a'] },
   { id: 'mizu', name: '水色', price: 120, grp: 'slime', c: ['#5bb8e8', '#d4f0ff', '#1d5c88'] },
@@ -408,12 +409,12 @@ const MON_ART = {
     "..........OrDRRRRRRRRRRRRRRRRrO......OrR",
     "..........ODOrRRRRRRRRRRRRRRRRrO....OrRR",
     "...........OOrRRRRRRRRRRRRRRRRRrO....OrD",
-    "...........OrRRRYYYYRRRRRRRRRRRRrO..OrRO",
-    "............OyYYYYYYYYYYRRRRRRRRRrOOrRDO",
-    "............OyRRRRYYYYYYYRRRRRDDRRrrRDO.",
-    ".............OrRRRYYYYYYYRRRRDOODDRRDO..",
-    ".............OrRRRYYYYYYRRRRRO..OODDO...",
-    ".............OrRRRyyDDDDDRRRRO....OO....",
+    "...........OrRRRRRDYRRRRRRRRRRRRrO..OrRO",
+    "............OrrRRRDYYYYYRRRRRRRRRrOOrRDO",
+    "............OrrRRRDYYYYYYRRRRRDDRRrrRDO.",
+    ".............OrRRRDYYYYYYRRRRDOODDRRDO..",
+    ".............OrRRRDYYYYYRRRRRO..OODDO...",
+    ".............OrRRRDyDDDDDRRRRO....OO....",
     ".............OrRRROOOOOOOrRRRO..........",
     ".............OrRRRO.....OrRRRO..........",
     ".............OrRRRO.....OrRRRO..........",
@@ -778,7 +779,7 @@ const spineWidth = chars => Math.round(30 + Math.min(90, Math.sqrt(Math.max(0, c
 const hashN = s => { let h = 0; for (const ch of String(s)) h = (h * 31 + ch.codePointAt(0)) >>> 0; return h; };
 const LABELED = ['seigaiha'];
 // How much of the spine height each design leaves for the title: [share of height, label padding px]
-const TITLE_ROOM = { watoji: [0.74, 18], kosho: [0.44, 14], madousho: [0.55, 0], ryurin: [0.64, 12] };
+const TITLE_ROOM = { watoji: [0.74, 18], kosho: [0.44, 14], madousho: [0.55, 0], ryurin: [0.64, 14], shinokemuri: [0.55, 16] };
 // ---- Title fitting (v1.1.2) ----
 // One line first. Only when that makes the letters much smaller, break between phrases:
 // after の・と・を・に・へ・は・が・や・も that follow a kanji, and where kanji meets katakana.
@@ -838,7 +839,7 @@ function fitTitleBox(o) {
 }
 // measurements made before the book fonts arrive are thrown away
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { tfCache.clear(); if (S.view === 'library') renderLibrary(); }).catch(() => {});
-const LABEL_TITLE = ['seigaiha', 'watoji', 'kosho', 'ryurin', 'aozora'];
+const LABEL_TITLE = ['seigaiha', 'watoji', 'kosho', 'ryurin', 'aozora', 'shinokemuri'];
 function spineHTML(id, title, w, h, brk) {
   id = COVERS.some(c => c.id === id) ? id : 'kraft';
   const fs = Math.max(9, Math.min(16, Math.round((w - 12) * 0.62)));
@@ -852,17 +853,27 @@ function spineHTML(id, title, w, h, brk) {
 }
 // Front cover made from the cover design: same colour / pattern, gold double frame, the title.
 // face: 'ro' = vertical title, bound on the right / 'lo' = horizontal title, bound on the left
-const COVER_LABEL = ['watoji', 'seigaiha', 'ryurin', 'seizu', 'aozora'];
+// v1.1.21: the spine's bands run across the front cover and the gold double frame is gone, so a vertical title
+// sits between the bands (base.css .fcover.ro .fc-box top 15% / bottom 17%).
+const COVER_LABEL = ['watoji', 'seigaiha', 'seizu', 'aozora'];
+// designs whose cover puts the title elsewhere: [width share, height share, minus px across, minus px down] per face
+// (must match the .fc-box rules for these designs at the end of base.css)
+const COVER_BOX = {
+  shinokemuri: { ro: [0.333, 0.52, 0, 0], lo: [0.533, 0.235, 0, 0] },
+  ryurin: { ro: [0.42, 0.72, 10, 16], lo: [0.64, 0.40, 14, 12] },
+  kosho: { ro: [0.62, 0.35, 10, 12], lo: [0.68, 0.35, 10, 12] },
+  madousho: { ro: [0.62, 0.68, 20, 12], lo: [0.68, 0.54, 20, 12] } };
 function coverHTML(id, title, w, face, brk) {
   id = COVERS.some(c => c.id === id) ? id : 'kraft'; face = face === 'lo' ? 'lo' : 'ro';
   const v = face === 'ro', H = w * 4 / 3; let t = '';
   if (title) {
-    const lab = COVER_LABEL.includes(id) ? 12 : 0;
-    const bw = (v ? w * 0.62 : w * 0.68) - (v ? lab : lab * 1.5), bh = (v ? H * 0.76 : H * 0.54) - (v ? lab * 1.5 : lab);
+    const lab = COVER_LABEL.includes(id) ? 12 : 0, cb = (COVER_BOX[id] || {})[face];
+    const bw = cb ? w * cb[0] - cb[2] : (v ? w * 0.62 : w * 0.68) - (v ? lab : lab * 1.5);
+    const bh = cb ? H * cb[1] - cb[3] : (v ? H * 0.68 : H * 0.54) - (v ? lab * 1.5 : lab);
     const r = fitTitleBox({ title, brk: brk || '', v, w: Math.floor(bw), h: Math.floor(bh), max: Math.round(w / 6.4), oneMin: Math.round(w / 10), min: Math.max(8, Math.round(w / 15)), ls: 0.1, al: v ? TITLE_ALIGN : '' });
     t = `<span class="fc-box"><span class="fc-t ${r.cls}" style="font-size:${r.f}px;letter-spacing:.1em">${r.inner}</span></span>${v ? '' : '<span class="fc-rule"></span>'}`;
   }
-  return `<span class="fcover ${face} spine sp-${id}" style="--cw:${w}px"><span class="sp-deco"></span><span class="hinge"></span><span class="frame"></span>${t}</span>`;
+  return `<span class="fcover ${face} spine sp-${id}" style="--cw:${w}px"><span class="sp-deco"></span><span class="hinge"></span><span class="cv-art"></span>${t}</span>`;
 }
 function renderLibrary() {
   if (S.openWork && workById(S.openWork)) { $('#lib-list').hidden = true; $('#lib-work').hidden = false; renderWork(); return; }
