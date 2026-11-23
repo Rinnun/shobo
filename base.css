@@ -657,3 +657,7 @@ body.reading{overflow:hidden}
 /* 1.1.22：背表紙の題字は、当てはめ（fitTitleBox）で決めた長さ（--tfh）で折り返す。前は背表紙の高さいっぱいまで1列に伸びて、魔導書の紋章や古書の革の段に重なっていた。札の余白は長さに入れない（content-box）。 */
 .spine .sp-title.tf{box-sizing:content-box;max-height:var(--tfh,none)}
 .spine .sp-title.tf.al-stag:not(.manual){max-height:calc(var(--tfh,100vh) - 1em)}
+/* 1.1.23：表紙でも同じ。札にのせる縦書きの題字を2列に分けたとき、2列目を1字下げる仕掛け（.tf.al-stag の上の1字分の余白）を札の余白が消して、1列目が札の上に飛び出していた（鱗雲さんが和綴じの「硝子のきゃんでゐ」で見つけた）。札の上の余白に1字分を足して戻す。 */
+.fcover.ro.sp-watoji .fc-t.tf.al-stag:not(.manual),.fcover.ro.sp-seigaiha .fc-t.tf.al-stag:not(.manual),.fcover.ro.sp-seizu .fc-t.tf.al-stag:not(.manual),.fcover.ro.sp-aozora .fc-t.tf.al-stag:not(.manual){padding-top:calc(8px + 1em)}
+.fcover.ro.sp-kosho .fc-t.tf.al-stag:not(.manual){padding-top:calc(5px + 1em)}
+.fcover.ro.sp-madousho .fc-t.tf.al-stag:not(.manual){padding-top:calc(6px + 1em)}
