@@ -102,3 +102,7 @@ html.android body:not(.plot-mode) #edSave { grid-column: 1; grid-row: 2; }
 html.android body:not(.plot-mode) #zonePill { grid-column: 2; grid-row: 2; justify-self: start; line-height: 18px; }
 html.android body:not(.plot-mode) .ed-status > * { line-height: 20px; }
 html.android body:not(.plot-mode) .ed-status .spacer { display: none; }
+/* v1.1.24: the "並べ替え中" bar sticks under the header while scrolling the shelf. main{overflow-x:hidden} made main a scroll
+   container, which stops position:sticky; clip hides the same overflow without that. */
+@supports (overflow-x: clip) { html.android main { overflow-x: clip; } }
+html.android .arr-bar { top: 52px; }

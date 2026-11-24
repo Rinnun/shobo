@@ -8,7 +8,7 @@
 (function () {
 'use strict';
 window.SHOBO_WEB = true;
-const VERSION = '1.1.23';
+const VERSION = '1.1.25';
 const DBN = 'shobo', ST = 'files';
 const mem = { DATA: new Map(), CACHE: new Map() };
 const norm = p => String(p).replace(/^\/+|\/+$/g, '');

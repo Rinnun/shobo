@@ -123,7 +123,7 @@ async function workInfo(wid) {
   const order = (m.order || []).filter(n => files.includes(n));
   for (const f of files) if (!order.includes(f)) order.push(f);
   const hiddenSet = new Set(m.hidden || []); const hidden = [];
-  const chapters = []; let chars = 0, updatedAt = m.createdAt || 0;
+  const chapters = []; let chars = 0, updatedAt = m.createdAt || 0, firstFile = Infinity;
   for (const f of order) {
     if (hiddenSet.has(f)) { hidden.push({ id: f, title: M.baseName(f) }); continue; }
     const p = j(dir, f); let e = byName.get(f);
@@ -133,11 +133,13 @@ async function workInfo(wid) {
     if (c && c.mtime === mtime && c.size === size) n = c.chars;
     else { n = M.countChars(await readText(p)); cache.set(p, { mtime, size, chars: n }); }
     chapters.push({ id: f, title: M.baseName(f), chars: n, mtime });
-    chars += n; if (mtime > updatedAt) updatedAt = mtime;
+    chars += n; if (mtime > updatedAt) updatedAt = mtime; if (mtime > 0) firstFile = Math.min(firstFile, mtime);
   }
   const isWork = !!stored || files.length > 0;
   if (isWork && (!stored || order.join('\n') !== (m.order || []).join('\n'))) { m.order = order; await writeMeta(wid, m).catch(() => {}); }
-  return { id: wid, title: wid, cover: m.cover || 'kraft', face: m.face === 'lo' ? 'lo' : 'ro', titleBreak: m.titleBreak || '', share: { show: m.share ? m.share.show !== false : true, hide: m.share && typeof m.share.hide === 'string' ? m.share.hide : '' }, chapters, hidden, chars, updatedAt, isWork, plot: pkey ? { key: pkey, mode: 'pc' } : null };
+  return { id: wid, title: wid, cover: m.cover || 'kraft', face: m.face === 'lo' ? 'lo' : 'ro', titleBreak: m.titleBreak || '', share: { show: m.share ? m.share.show !== false : true, hide: m.share && typeof m.share.hide === 'string' ? m.share.hide : '' }, chapters, hidden, chars, updatedAt, isWork,
+    // v1.1.24「作った順」(same rule as the PC) and when the look last changed
+    createdAt: Math.round(Math.min(stored && stored.createdAt || Infinity, firstFile)) || 0, lookAt: Number(m.lookAt) || 0, plot: pkey ? { key: pkey, mode: 'pc' } : null };
 }
 async function listWorks() {
   await ready;
@@ -183,8 +185,8 @@ async function renameWork(wid, title) {
   }
   return name;
 }
-async function setCover(wid, cover) { const m = await meta(wid); m.cover = cover; await writeMeta(wid, m); }
-async function setFace(wid, o) { const m = await meta(wid); if (o.face !== undefined) m.face = o.face === 'lo' ? 'lo' : 'ro'; if (o.titleBreak !== undefined) m.titleBreak = String(o.titleBreak || '').trim(); if (o.share !== undefined) m.share = { show: o.share.show !== false, hide: String(o.share.hide || '') }; await writeMeta(wid, m); }
+async function setCover(wid, cover) { const m = await meta(wid); if (m.cover !== cover) m.lookAt = Date.now(); m.cover = cover; await writeMeta(wid, m); }
+async function setFace(wid, o) { const m = await meta(wid); const was = (m.face || 'ro') + '|' + (m.titleBreak || ''); if (o.face !== undefined) m.face = o.face === 'lo' ? 'lo' : 'ro'; if (o.titleBreak !== undefined) m.titleBreak = String(o.titleBreak || '').trim(); if (o.share !== undefined) m.share = { show: o.share.show !== false, hide: String(o.share.hide || '') }; if ((m.face || 'ro') + '|' + (m.titleBreak || '') !== was) m.lookAt = Date.now(); await writeMeta(wid, m); }
 async function setOrder(wid, order) {
   const m = await meta(wid); const hid = (m.order || []).filter(x => (m.hidden || []).includes(x) && !order.includes(x));
   m.order = [...order, ...hid]; await writeMeta(wid, m);
@@ -342,7 +344,7 @@ async function exportBundle() {
     const chapters = [];
     for (const c of w.chapters) { const { text } = await readChapter(w.id, c.id); chapters.push({ file: c.id, title: c.title, body: text, updatedAt: Math.round(c.mtime) }); }
     const pj = await readJson(plotPath(w.id), null);
-    works.push({ title: w.title, cover: w.cover, face: w.face, titleBreak: w.titleBreak, chapters, memos: await readMemos(w.id), plot: pj && pj.edited && typeof pj.text === 'string' ? { key: pj.key, file: pj.file, text: pj.text, updatedAt: pj.updatedAt, edited: true } : undefined });
+    works.push({ title: w.title, cover: w.cover, face: w.face, titleBreak: w.titleBreak, createdAt: w.createdAt, lookAt: w.lookAt, chapters, memos: await readMemos(w.id), plot: pj && pj.edited && typeof pj.text === 'string' ? { key: pj.key, file: pj.file, text: pj.text, updatedAt: pj.updatedAt, edited: true } : undefined });
   }
   const data = { format: 'shobo-bundle', version: 1, app: '蛇喰鷲書房', exportedAt: new Date().toISOString(), progress: await readProgress(), works };
   const ok = await shareFiles('引き継ぎファイル', [{ name: `蛇喰鷲書房_${WEB ? 'バックアップ' : '引き継ぎ'}_${dayStamp()}.json`, text: JSON.stringify(data) }]);
@@ -357,8 +359,14 @@ async function importBundle() {
   for (const w of data.works) {
     if (!w || !Array.isArray(w.chapters)) continue;
     const wid = M.sanitize(w.title);
-    if (!(await exists(j(ROOT, wid)))) { await mkdirp(j(ROOT, wid)); await writeMeta(wid, { cover: w.cover || 'kraft', face: w.face === 'lo' ? 'lo' : 'ro', titleBreak: w.titleBreak || '', order: [], createdAt: Date.now() }); res.newWorks++; }
+    const isNew = !(await exists(j(ROOT, wid)));
+    if (isNew) { await mkdirp(j(ROOT, wid)); await writeMeta(wid, { cover: w.cover || 'kraft', face: w.face === 'lo' ? 'lo' : 'ro', titleBreak: w.titleBreak || '', order: [], createdAt: Number(w.createdAt) || Date.now(), lookAt: Number(w.lookAt) || 0 }); res.newWorks++; }
     const m = await meta(wid); const order = [...(m.order || [])];
+    // v1.1.24: the look changed later on the other side wins; the older "made" date is kept (same as store.js)
+    if (!isNew && (Number(w.lookAt) || 0) > (Number(m.lookAt) || 0)) {
+      if (w.cover) m.cover = w.cover; m.face = w.face === 'lo' ? 'lo' : 'ro'; m.titleBreak = w.titleBreak || ''; m.lookAt = Number(w.lookAt); res.looks = (res.looks || 0) + 1;
+    }
+    if (Number(w.createdAt) > 0 && !(Number(m.createdAt) > 0 && m.createdAt <= Number(w.createdAt))) m.createdAt = Number(w.createdAt);
     for (const c of w.chapters) {
       let name = M.sanitize(c.file || c.title); if (!M.CH_RE.test(name)) name += '.md';
       const p = j(wdir(wid), name); const body = String(c.body || ''); const when = Number(c.updatedAt) || 0;

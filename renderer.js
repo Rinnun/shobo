@@ -32,7 +32,7 @@ const COVERS = [
   { id: 'kinpaku', name: '金箔', price: 600, grp: 'deco' }, { id: 'madousho', name: '魔導書', price: 700, grp: 'deco' },
   { id: 'seizu', name: '星図', price: 700, grp: 'deco' }, { id: 'ryurin', name: '竜鱗', price: 900, grp: 'deco' },
   { id: 'aozora', name: '青空', price: 600, grp: 'deco' }, { id: 'ramune', name: 'ラムネ', price: 600, grp: 'deco' },
-  { id: 'shinokemuri', name: '死の煙', price: 800, grp: 'deco' }];
+  { id: 'shinokemuri', name: '死の煙', price: 800, grp: 'deco' }, { id: 'mounengaku', name: '妄念学', price: 800, grp: 'deco' }];
 const SLIMES = [
   { id: 'green', name: '若葉', price: 0, grp: 'slime', c: ['#5cc46b', '#c9f2c4', '#22703a'] },
   { id: 'mizu', name: '水色', price: 120, grp: 'slime', c: ['#5bb8e8', '#d4f0ff', '#1d5c88'] },
@@ -779,7 +779,7 @@ const spineWidth = chars => Math.round(30 + Math.min(90, Math.sqrt(Math.max(0, c
 const hashN = s => { let h = 0; for (const ch of String(s)) h = (h * 31 + ch.codePointAt(0)) >>> 0; return h; };
 const LABELED = ['seigaiha'];
 // How much of the spine height each design leaves for the title: [share of height, label padding px]
-const TITLE_ROOM = { watoji: [0.74, 18], kosho: [0.44, 14], madousho: [0.55, 0], ryurin: [0.64, 14], shinokemuri: [0.55, 16] };
+const TITLE_ROOM = { watoji: [0.74, 18], kosho: [0.44, 14], madousho: [0.55, 0], ryurin: [0.64, 14], shinokemuri: [0.55, 16], mounengaku: [0.52, 16] };
 // ---- Title fitting (v1.1.2) ----
 // One line first. Only when that makes the letters much smaller, break between phrases:
 // after の・と・を・に・へ・は・が・や・も that follow a kanji, and where kanji meets katakana.
@@ -839,7 +839,7 @@ function fitTitleBox(o) {
 }
 // measurements made before the book fonts arrive are thrown away
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { tfCache.clear(); if (S.view === 'library') renderLibrary(); }).catch(() => {});
-const LABEL_TITLE = ['seigaiha', 'watoji', 'kosho', 'ryurin', 'aozora', 'shinokemuri'];
+const LABEL_TITLE = ['seigaiha', 'watoji', 'kosho', 'ryurin', 'aozora', 'shinokemuri', 'mounengaku'];
 function spineHTML(id, title, w, h, brk) {
   id = COVERS.some(c => c.id === id) ? id : 'kraft';
   const fs = Math.max(9, Math.min(16, Math.round((w - 12) * 0.62)));
@@ -862,6 +862,7 @@ const COVER_LABEL = ['watoji', 'seigaiha', 'seizu', 'aozora'];
 // (must match the .fc-box rules for these designs at the end of base.css)
 const COVER_BOX = {
   shinokemuri: { ro: [0.333, 0.52, 0, 0], lo: [0.533, 0.235, 0, 0] },
+  mounengaku: { ro: [0.28, 0.65, 0, 0], lo: [0.52, 0.30, 0, 0] },
   ryurin: { ro: [0.42, 0.72, 10, 16], lo: [0.64, 0.40, 14, 12] },
   kosho: { ro: [0.62, 0.35, 10, 12], lo: [0.68, 0.35, 10, 12] },
   madousho: { ro: [0.62, 0.68, 20, 12], lo: [0.68, 0.54, 20, 12] } };
@@ -889,19 +890,26 @@ function renderLibrary() {
   const tidy = S.tidy;
   $('#libTidy').textContent = tidy ? '整理を終える' : '整理';
   $('#libTidy').setAttribute('aria-pressed', tidy);
-  shelf.innerHTML = (tidy ? `<div class="tidy-bar"><span class="muted small" id="tidyCount">ごみ箱へ移す作品を選んでください</span><span class="spacer"></span><button class="btn sm danger" id="tidyGo" disabled>選んだ作品をごみ箱へ</button></div>` : '')
-    + `<div class="bookshelf">${tidy ? '' : `<button class="slot-new" id="shelfNew" title="新しい作品" aria-label="新しい作品"><span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4c-6 0-11 4-13 11l-2 5 4-2c7-2 11-7 11-14z"/><path d="M5 19l7-7"/></svg></span></button>`}${S.works.map(w => {
+  const arr = !tidy && S.arrange && shelfMode() === 'manual';
+  if (!arr) S.arrange = false;
+  const list = shelfWorks();
+  shelf.innerHTML = (tidy ? '' : arr ? arrangeBarHTML() : sortBarHTML()) + (tidy ? `<div class="tidy-bar"><span class="muted small" id="tidyCount">ごみ箱へ移す作品を選んでください</span><span class="spacer"></span><button class="btn sm danger" id="tidyGo" disabled>選んだ作品をごみ箱へ</button></div>` : '')
+    + `<div class="bookshelf${arr ? ' arranging' : ''}">${tidy || arr ? '' : `<button class="slot-new" id="shelfNew" title="新しい作品" aria-label="新しい作品"><span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4c-6 0-11 4-13 11l-2 5 4-2c7-2 11-7 11-14z"/><path d="M5 19l7-7"/></svg></span></button>`}${list.map(w => {
       const sw = spineWidth(w.chars), sh = 200 + hashN(w.id) % 29;
-      return `<button class="spine-btn${tidy && S.picked.has(w.id) ? ' picked' : ''}" data-w="${esc(w.id)}" style="--h:${sh}px" aria-pressed="${tidy ? S.picked.has(w.id) : 'false'}" title="${esc(w.title)}　${w.chapters.length}章・${fmt(w.chars)}字">${spineHTML(w.cover, w.title, sw, sh, w.titleBreak)}${tidy ? `<span class="pick-mark" aria-hidden="true">${S.picked.has(w.id) ? '✓' : ''}</span>` : ''}</button>`;
-    }).join('')}</div><div class="row shelf-foot"><p class="shelf-hint muted small">${IS_ANDROID ? '背表紙は書いた文字数に合わせて太く育ちます。' : '背表紙は書いた文字数に合わせて太く育ちます。マウスを乗せると章数と文字数が出ます。'}</p><span class="spacer"></span>${tidy ? '' : '<button class="btn sm" id="shelfShare"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M12 3v12"/><path d="M7 8l5-5 5 5"/></svg> 本棚をシェア</button>'}</div>`;
+      return `<button class="spine-btn${tidy && S.picked.has(w.id) ? ' picked' : ''}${arr && S.arrSel === w.id ? ' sel' : ''}" data-w="${esc(w.id)}" style="--h:${sh}px" aria-pressed="${tidy ? S.picked.has(w.id) : 'false'}" title="${esc(w.title)}　${w.chapters.length}章・${fmt(w.chars)}字">${spineHTML(w.cover, w.title, sw, sh, w.titleBreak)}${tidy ? `<span class="pick-mark" aria-hidden="true">${S.picked.has(w.id) ? '✓' : ''}</span>` : ''}</button>`;
+    }).join('')}</div><div class="row shelf-foot"><p class="shelf-hint muted small">${arr ? '' : shelfMode() === 'manual' ? (IS_ANDROID ? '「並べ替える」で、本を好きな順に並べられます。' : '背表紙をドラッグして、好きな場所に置けます。並びは引き継ぎファイルでスマホにもそろいます。') : IS_ANDROID ? '背表紙は書いた文字数に合わせて太く育ちます。' : '背表紙は書いた文字数に合わせて太く育ちます。マウスを乗せると章数と文字数が出ます。'}</p></div>`;
+  if (!tidy) bindShelfBar();
   if ($('#shelfNew')) $('#shelfNew').onclick = newWork;
   if ($('#shelfShare')) $('#shelfShare').onclick = openShare;
   shelf.querySelectorAll('[data-w]').forEach(b => b.addEventListener('click', () => {
     const id = b.dataset.w;
+    if (dragJustEnded) return;
+    if (arr) { S.arrSel = S.arrSel === id ? null : id; renderLibrary(); return; }
     if (!S.tidy) return openWork(id);
     if (S.picked.has(id)) S.picked.delete(id); else S.picked.add(id);
     renderLibrary();
   }));
+  if (!tidy && !arr && !IS_ANDROID && shelfMode() === 'manual') bindShelfDrag(shelf);
   if (tidy) {
     const n = S.picked.size; $('#tidyGo').disabled = !n;
     if (n) $('#tidyCount').textContent = n + '作品を選んでいます';
@@ -916,7 +924,103 @@ function renderLibrary() {
     };
   }
 }
-$('#libTidy').addEventListener('click', () => { S.tidy = !S.tidy; S.picked.clear(); renderLibrary(); });
+$('#libTidy').addEventListener('click', () => { S.tidy = !S.tidy; S.picked.clear(); S.arrange = false; renderLibrary(); });
+
+/* ---------- v1.1.24: shelf order (鱗雲さん 2026-11-24) ----------
+   progress.shelf = { mode, order: [work folder names], at }. mode: recent (default, what it always was) / created / chars / manual.
+   It travels in the hand-off file and the newer one wins (mergeProgress), so the PC and the phone show the same order.
+   In manual order a work that is not in the list yet (a new one) goes first. */
+const SHELF_MODES = [['recent', '最後に書いた順', 'いま書いている作品が先頭'], ['created', '作った順', '古い作品から'], ['chars', '字数順', '字数の多い作品から'], ['manual', '手で並べた順', '背表紙を動かして好きな順に。新しい作品は先頭に入ります']];
+const shelfState = () => (S.progress && S.progress.shelf) || {};
+const shelfMode = () => { const m = shelfState().mode; return SHELF_MODES.some(x => x[0] === m) ? m : 'recent'; };
+function shelfWorks() {
+  const ws = S.works.slice(), m = shelfMode();   // S.works comes newest first
+  if (m === 'created') ws.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+  else if (m === 'chars') ws.sort((a, b) => (b.chars || 0) - (a.chars || 0));
+  else if (m === 'manual') { const ord = shelfState().order || []; const ix = id => { const i = ord.indexOf(id); return i < 0 ? -1 : i; }; ws.sort((a, b) => ix(a.id) - ix(b.id)); }
+  return ws;
+}
+function setShelf(patch) {
+  S.progress.shelf = { ...shelfState(), ...patch, at: Date.now() };
+  saveProgress(); renderLibrary();
+}
+const SHARE_IC = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M12 3v12"/><path d="M7 8l5-5 5 5"/></svg>';
+function sortBarHTML() {
+  const m = shelfMode(), cur = SHELF_MODES.find(x => x[0] === m);
+  return `<div class="sortbar"><span class="lb muted small">並び順</span><span class="sortwrap"><button type="button" class="sortpill" id="sortPill" aria-haspopup="true" aria-expanded="false">${cur[1]}<span class="ar" aria-hidden="true">▼</span></button>`
+    + `<div class="sortmenu" id="sortMenu" hidden>${SHELF_MODES.map((x, i) => (i === 3 ? '<div class="sep"></div>' : '') + `<button type="button" class="it${x[0] === m ? ' cur' : ''}" data-sort="${x[0]}"><span class="ck">${x[0] === m ? '✓' : ''}</span><span>${x[1]}</span><span class="sub">${x[2]}</span></button>`).join('')}</div></span>`
+    + (IS_ANDROID && m === 'manual' ? '<button type="button" class="btn sm" id="arrGo">並べ替える</button>' : '')
+    + `<button type="button" class="btn sm" id="shelfShare"${IS_ANDROID ? ' aria-label="本棚をシェア" title="本棚をシェア"' : ''}>${SHARE_IC}${IS_ANDROID ? '' : ' 本棚をシェア'}</button></div>`;
+}
+function arrangeBarHTML() {
+  return `<div class="arr-bar"><div class="arr-top"><span class="small">並べ替え中：${S.arrSel ? '矢印で動かします' : '動かす本をタップしてください'}</span><button type="button" class="btn sm gold" id="arrDone">終わる</button></div>`
+    + `<div class="movebar">${[['first', '⇤ 先頭へ'], ['left', '◀ 左へ'], ['right', '右へ ▶'], ['last', '最後へ ⇥']].map(([k, t]) => `<button type="button" class="btn sm" data-mv="${k}"${S.arrSel ? '' : ' disabled'}>${t}</button>`).join('')}</div></div>`;
+}
+function bindShelfBar() {
+  const pill = $('#sortPill'), menu = $('#sortMenu');
+  if (pill) {
+    const close = () => { menu.hidden = true; pill.setAttribute('aria-expanded', 'false'); document.removeEventListener('pointerdown', outside, true); };
+    const outside = e => { if (!e.target.closest('.sortwrap')) close(); };
+    pill.onclick = () => { if (!menu.hidden) return close(); menu.hidden = false; pill.setAttribute('aria-expanded', 'true'); document.addEventListener('pointerdown', outside, true); };
+    menu.querySelectorAll('[data-sort]').forEach(b => b.onclick = () => {
+      document.removeEventListener('pointerdown', outside, true);
+      const mode = b.dataset.sort, st = shelfState();
+      // switching to manual for the first time starts from the order on screen now
+      const patch = { mode }; if (mode === 'manual' && !(st.order && st.order.length)) patch.order = shelfWorks().map(w => w.id);
+      setShelf(patch);
+    });
+  }
+  if ($('#shelfShare')) $('#shelfShare').onclick = openShare;
+  if ($('#arrGo')) $('#arrGo').onclick = () => { S.arrange = true; S.arrSel = null; renderLibrary(); };
+  if ($('#arrDone')) $('#arrDone').onclick = () => { S.arrange = false; S.arrSel = null; renderLibrary(); };
+  document.querySelectorAll('[data-mv]').forEach(b => b.onclick = () => {
+    const ids = shelfWorks().map(w => w.id), i = ids.indexOf(S.arrSel); if (i < 0) return;
+    const j = { first: 0, left: Math.max(0, i - 1), right: Math.min(ids.length - 1, i + 1), last: ids.length - 1 }[b.dataset.mv];
+    if (j === i) return;
+    ids.splice(i, 1); ids.splice(j, 0, S.arrSel); setShelf({ order: ids });
+  });
+}
+// PC: drag a spine to a new place (manual order only). A short press without moving still opens the work.
+let dragJustEnded = false;
+function bindShelfDrag(shelf) {
+  const bs = shelf.querySelector('.bookshelf'); if (!bs) return;
+  bs.querySelectorAll('.spine-btn').forEach(btn => btn.addEventListener('pointerdown', e => {
+    if (e.button !== 0) return;
+    const x0 = e.clientX, y0 = e.clientY, id = btn.dataset.w; let drag = null;
+    const move = ev => {
+      if (!drag) {
+        if (Math.hypot(ev.clientX - x0, ev.clientY - y0) < 6) return;
+        const r = btn.getBoundingClientRect(), cl = btn.cloneNode(true);
+        cl.classList.add('drag-lift'); cl.removeAttribute('data-w'); cl.style.left = r.left + 'px'; cl.style.top = r.top + 'px'; document.body.appendChild(cl);
+        const line = document.createElement('span'); line.className = 'dropline';
+        btn.classList.add('drag-ghost'); drag = { cl, line, dx: x0 - r.left, dy: y0 - r.top, before: null };
+      }
+      drag.cl.style.left = (ev.clientX - drag.dx) + 'px'; drag.cl.style.top = (ev.clientY - drag.dy - 14) + 'px';
+      // where would it go: the nearest spine on the same shelf row, left or right half
+      const spines = [...bs.querySelectorAll('.spine-btn')].filter(b => b !== btn);
+      let best = null, bd = Infinity;
+      for (const b of spines) { const r = b.getBoundingClientRect(); if (ev.clientY < r.top - 40 || ev.clientY > r.bottom + 20) continue; const d = Math.abs(ev.clientX - (r.left + r.width / 2)); if (d < bd) { bd = d; best = { b, r }; } }
+      if (!best) return;
+      const after = ev.clientX > best.r.left + best.r.width / 2;
+      const ref = after ? best.b.nextElementSibling : best.b;
+      drag.before = after ? spines[spines.indexOf(best.b) + 1] || null : best.b;
+      if (drag.line.nextElementSibling !== ref || !drag.line.parentNode) bs.insertBefore(drag.line, ref);
+    };
+    const up = () => {
+      document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up); document.removeEventListener('pointercancel', up);
+      if (!drag) return;
+      drag.cl.remove(); drag.line.remove(); btn.classList.remove('drag-ghost');
+      dragJustEnded = true; setTimeout(() => { dragJustEnded = false; }, 0);
+      const ids = shelfWorks().map(w => w.id).filter(x => x !== id);
+      const bi = drag.before ? ids.indexOf(drag.before.dataset.w) : ids.length;
+      ids.splice(bi < 0 ? ids.length : bi, 0, id);
+      setShelf({ order: ids });
+    };
+    document.addEventListener('pointermove', move); document.addEventListener('pointerup', up); document.addEventListener('pointercancel', up);
+  }));
+}
+// a renamed work keeps its place in the hand-arranged order
+function shelfRename(from, to) { const st = shelfState(); if (st.order && st.order.includes(from)) { S.progress.shelf = { ...st, order: st.order.map(x => x === from ? to : x), at: Date.now() }; saveProgress(); } }
 $('#libImport').addEventListener('click', () => openImport(null));
 $('#libNew').addEventListener('click', newWork);
 $('#libFolder').addEventListener('click', () => api.openFolder(null));
@@ -1048,7 +1152,7 @@ function renderWork() {
   $('#wFolder').onclick = () => api.openFolder(wid);
   $('#wTitle').addEventListener('change', async e => {
     const v = e.target.value.trim() || '無題の物語'; if (v === w.title) return;
-    try { if (S.curWork === wid) { await saveChapter(); await memoSave(); memo.key = null; } const nid = await api.renameWork(wid, v); if (S.curWork === wid) { S.curWork = nid; lsSet('ss.curWork', nid); loaded.key = null; } S.openWork = nid; await refreshWorks(); }
+    try { if (S.curWork === wid) { await saveChapter(); await memoSave(); memo.key = null; } const nid = await api.renameWork(wid, v); if (nid !== wid) shelfRename(wid, nid); if (S.curWork === wid) { S.curWork = nid; lsSet('ss.curWork', nid); loaded.key = null; } S.openWork = nid; await refreshWorks(); }
     catch (err) { e.target.value = w.title; fileErr(err, '作品名を変えられませんでした'); }
   });
   // the cover is changed from the spine itself (PC: click, phone: long press)
@@ -1094,7 +1198,7 @@ function renderWork() {
     spine.addEventListener('click', () => { if (!longDone && !$('.cov-pop')) toast('表紙を長押しすると装丁を変えられます'); });
   } else spine.addEventListener('click', openCov);
   renderPlotField(w);
-  $('#wAdd').onclick = async () => { try { const cid = await api.createChapter(wid, '第' + (chs.length + 1) + '章', ''); await refreshWorks(); openChapter(wid, cid); } catch (e) { fileErr(e, '章を追加できませんでした'); } };
+  $('#wAdd').onclick = async () => { try { const cid = await api.createChapter(wid, '無題', ''); /* 1.1.25：番号は付けない（番外などを挟むとずれるため。鱗雲さん） */ await refreshWorks(); openChapter(wid, cid); } catch (e) { fileErr(e, '章を追加できませんでした'); } };
   $('#wImp').onclick = () => openImport(wid);
   $('#wExpCh').onclick = () => {
     const st = P().settings;
@@ -2678,7 +2782,9 @@ edText.addEventListener('scroll', () => { if (!sparks.length) return; sparks.len
 function renderShop() {
   const p = P(); const cat = S.shopCat;
   document.querySelectorAll('#shopSeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.cat === cat));
-  const list = catalog(cat);
+  // v1.1.24: the shop lists the designs cheapest first within each group (the cover window keeps the order they were added)
+  let list = catalog(cat);
+  if (cat === 'cover') { const gi = g => list.findIndex(x => x.grp === g); list = list.slice().sort((a, b) => gi(a.grp) - gi(b.grp) || a.price - b.price); }
   const owned = p.owned[cat];
   $('#shopHint').textContent = { cover: '買った装丁は、書斎の作品ページで背表紙を' + (IS_ANDROID ? '長押し' : 'クリック') + 'すると選べます。', slime: '選んだ討伐対象が毎日あらわれます。設定で「持っているものから毎日ランダム」にもできます。', bgm: '「▶ 試聴」で20秒ほど聞けます。買った曲を選んで、上の「♪ BGM」で再生します。', spark: '打つたびに散る火花の色です。ゾーンに入ると、選んだ色にほかの色が混ざって華やかになります。', script: '本棚をシェアするときに、題を伏せる字です。作品ページの「本棚シェア」で、作品ごとに選べます。異世界文字は初めから使えます。' }[cat];
   let grp = null;
@@ -2791,6 +2897,8 @@ function mergeProgress(local, incoming) {
   for (const [d, v] of Object.entries(o.zoneDaily)) { const a = m.zoneDaily[d] || { n: 0, ms: 0 }; m.zoneDaily[d] = { n: Math.max(a.n, v.n || 0), ms: Math.max(a.ms, v.ms || 0) }; }
   m.totalWritten = Math.max(m.totalWritten, o.totalWritten);
   for (const key of ['loginRewards', 'levelRewards']) for (const [x, v] of Object.entries(o[key])) if (!m[key][x]) m[key][x] = v;
+  // v1.1.24: the shelf order (mode and the hand-arranged list) follows whichever side changed it last
+  if (o.shelf && (Number(o.shelf.at) || 0) > (Number(m.shelf && m.shelf.at) || 0)) m.shelf = JSON.parse(JSON.stringify(o.shelf));
   if ((o.login.last || '') > (m.login.last || '')) m.login = { ...o.login };
   const sum = obj => Object.values(obj).reduce((a, b) => a + (Number(b) || 0), 0);
   const earned = sum(m.kills) + sum(m.loginRewards) + sum(m.levelRewards);
@@ -2837,7 +2945,7 @@ $('#bImport').addEventListener('click', async () => {
     const r = await api.importBundle(); if (!r) return;
     if (r.progress) { S.progress = mergeProgress(S.progress, r.progress); await saveProgress(true); }
     loaded.key = null; memo.key = null; await refreshWorks(); renderHeader(); renderHP(); renderSettings();
-    openDlg(`<div class="dlg"><h3>読み込みました</h3><p style="margin:0;font-variant-numeric:tabular-nums">新しい作品 ${r.newWorks}　追加した章 ${r.added}<br>新しい方に更新した章 ${r.updated}　そのままの章 ${r.kept}${r.memos ? `<br>新しい方に更新したメモ ${r.memos}` : ''}${r.plots ? `<br>PCの版に差し替えたプロット ${r.plots}` : ''}${r.plotsKept ? `<br>スマホの方が新しいので残したプロット ${r.plotsKept}` : ''}${r.phonePlots ? `<br>スマホで直したプロット ${r.phonePlots}（新しい版として作品フォルダに入れました）` : ''}</p><div class="row"><span class="spacer"></span><button class="btn gold" data-close>閉じる</button></div></div>`);
+    openDlg(`<div class="dlg"><h3>読み込みました</h3><p style="margin:0;font-variant-numeric:tabular-nums">新しい作品 ${r.newWorks}　追加した章 ${r.added}<br>新しい方に更新した章 ${r.updated}${r.looks ? '<br>装丁をそろえた作品 ' + r.looks : ''}　そのままの章 ${r.kept}${r.memos ? `<br>新しい方に更新したメモ ${r.memos}` : ''}${r.plots ? `<br>PCの版に差し替えたプロット ${r.plots}` : ''}${r.plotsKept ? `<br>スマホの方が新しいので残したプロット ${r.plotsKept}` : ''}${r.phonePlots ? `<br>スマホで直したプロット ${r.phonePlots}（新しい版として作品フォルダに入れました）` : ''}</p><div class="row"><span class="spacer"></span><button class="btn gold" data-close>閉じる</button></div></div>`);
   } catch (e) { toast(e.code === 'BAD_BUNDLE' || /引き継ぎ|読め/.test(e.message) ? '引き継ぎファイルとして読めませんでした' : '読み込めませんでした'); }
 });
 $('#sRootChange').addEventListener('click', async () => {
