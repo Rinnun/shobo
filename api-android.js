@@ -139,7 +139,8 @@ async function workInfo(wid) {
   if (isWork && (!stored || order.join('\n') !== (m.order || []).join('\n'))) { m.order = order; await writeMeta(wid, m).catch(() => {}); }
   return { id: wid, title: wid, cover: m.cover || 'kraft', face: m.face === 'lo' ? 'lo' : 'ro', titleBreak: m.titleBreak || '', share: { show: m.share ? m.share.show !== false : true, hide: m.share && typeof m.share.hide === 'string' ? m.share.hide : '' }, chapters, hidden, chars, updatedAt, isWork,
     // v1.1.24「作った順」(same rule as the PC) and when the look last changed
-    createdAt: Math.round(Math.min(stored && stored.createdAt || Infinity, firstFile)) || 0, lookAt: Number(m.lookAt) || 0, plot: pkey ? { key: pkey, mode: 'pc' } : null };
+    createdAt: Math.round(Math.min(stored && stored.createdAt || Infinity, firstFile)) || 0, lookAt: Number(m.lookAt) || 0, plot: pkey ? { key: pkey, mode: 'pc' } : null,
+    shiori: m.shiori && typeof m.shiori === 'object' ? { ch: String(m.shiori.ch || ''), off: Math.max(0, Math.round(+m.shiori.off || 0)), at: Number(m.shiori.at) || 0 } : null };
 }
 async function listWorks() {
   await ready;
@@ -186,6 +187,8 @@ async function renameWork(wid, title) {
   return name;
 }
 async function setCover(wid, cover) { const m = await meta(wid); if (m.cover !== cover) m.lookAt = Date.now(); m.cover = cover; await writeMeta(wid, m); }
+// v1.1.26 しおり（store.js と同じ）
+async function setShiori(wid, s) { const m = await meta(wid); m.shiori = s && s.ch ? { ch: String(s.ch), off: Math.max(0, Math.round(+s.off || 0)), at: Date.now() } : { ch: '', off: 0, at: Date.now() }; await writeMeta(wid, m); return m.shiori; }
 async function setFace(wid, o) { const m = await meta(wid); const was = (m.face || 'ro') + '|' + (m.titleBreak || ''); if (o.face !== undefined) m.face = o.face === 'lo' ? 'lo' : 'ro'; if (o.titleBreak !== undefined) m.titleBreak = String(o.titleBreak || '').trim(); if (o.share !== undefined) m.share = { show: o.share.show !== false, hide: String(o.share.hide || '') }; if ((m.face || 'ro') + '|' + (m.titleBreak || '') !== was) m.lookAt = Date.now(); await writeMeta(wid, m); }
 async function setOrder(wid, order) {
   const m = await meta(wid); const hid = (m.order || []).filter(x => (m.hidden || []).includes(x) && !order.includes(x));
@@ -207,7 +210,7 @@ async function renameChapter(wid, cid, title) {
   const name = await uniqueName(wdir(wid), M.sanitize(title), ext, cid);
   if (name === cid) return cid;
   await move(cfile(wid, cid), j(wdir(wid), name));
-  const m = await meta(wid); m.order = (m.order || []).map(x => x === cid ? name : x); await writeMeta(wid, m);
+  const m = await meta(wid); m.order = (m.order || []).map(x => x === cid ? name : x); if (m.shiori && m.shiori.ch === cid) m.shiori.ch = name; await writeMeta(wid, m);
   const memos = await readMemos(wid);
   if (memos[cid]) { memos[name] = memos[cid]; delete memos[cid]; await writeMemos(wid, memos).catch(() => {}); }
   return name;
@@ -344,7 +347,7 @@ async function exportBundle() {
     const chapters = [];
     for (const c of w.chapters) { const { text } = await readChapter(w.id, c.id); chapters.push({ file: c.id, title: c.title, body: text, updatedAt: Math.round(c.mtime) }); }
     const pj = await readJson(plotPath(w.id), null);
-    works.push({ title: w.title, cover: w.cover, face: w.face, titleBreak: w.titleBreak, createdAt: w.createdAt, lookAt: w.lookAt, chapters, memos: await readMemos(w.id), plot: pj && pj.edited && typeof pj.text === 'string' ? { key: pj.key, file: pj.file, text: pj.text, updatedAt: pj.updatedAt, edited: true } : undefined });
+    works.push({ title: w.title, cover: w.cover, face: w.face, titleBreak: w.titleBreak, createdAt: w.createdAt, lookAt: w.lookAt, shiori: w.shiori || undefined, chapters, memos: await readMemos(w.id), plot: pj && pj.edited && typeof pj.text === 'string' ? { key: pj.key, file: pj.file, text: pj.text, updatedAt: pj.updatedAt, edited: true } : undefined });
   }
   const data = { format: 'shobo-bundle', version: 1, app: '蛇喰鷲書房', exportedAt: new Date().toISOString(), progress: await readProgress(), works };
   const ok = await shareFiles('引き継ぎファイル', [{ name: `蛇喰鷲書房_${WEB ? 'バックアップ' : '引き継ぎ'}_${dayStamp()}.json`, text: JSON.stringify(data) }]);
@@ -367,6 +370,8 @@ async function importBundle() {
       if (w.cover) m.cover = w.cover; m.face = w.face === 'lo' ? 'lo' : 'ro'; m.titleBreak = w.titleBreak || ''; m.lookAt = Number(w.lookAt); res.looks = (res.looks || 0) + 1;
     }
     if (Number(w.createdAt) > 0 && !(Number(m.createdAt) > 0 && m.createdAt <= Number(w.createdAt))) m.createdAt = Number(w.createdAt);
+    // v1.1.26 しおり：挟んだ（外した）日時の新しい方（store.js と同じ）
+    if (w.shiori && typeof w.shiori === 'object' && (Number(w.shiori.at) || 0) > (Number(m.shiori && m.shiori.at) || 0)) { m.shiori = { ch: String(w.shiori.ch || ''), off: Math.max(0, Math.round(+w.shiori.off || 0)), at: Number(w.shiori.at) }; res.shiori = (res.shiori || 0) + 1; }
     for (const c of w.chapters) {
       let name = M.sanitize(c.file || c.title); if (!M.CH_RE.test(name)) name += '.md';
       const p = j(wdir(wid), name); const body = String(c.body || ''); const when = Number(c.updatedAt) || 0;
@@ -416,7 +421,7 @@ window.api = {
   openFolder: async () => '',
   openPath: async () => '',
   setCountMode: async ws => { if (M.setCountWs(ws)) cache.clear(); return !!ws; },
-  createWork, renameWork, setCover, setFace, setOrder, setHidden, trashWork,
+  createWork, renameWork, setCover, setFace, setShiori, setOrder, setHidden, trashWork,
   version: async () => { try { const i = await App.getInfo(); return { version: i.version, platform: WEB ? 'iPhone版（ウェブ）' : 'Android版' }; } catch { return { version: '?', platform: WEB ? 'iPhone版（ウェブ）' : 'Android版' }; } }, workMarkdown, workPlain,
   readChapter, writeChapter, createChapter, renameChapter, trashChapter,
   readMemo, writeMemo, plotInfo, pickPlotFile, clearPlot, createPlot, savePlot,

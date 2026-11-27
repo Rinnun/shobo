@@ -1232,7 +1232,7 @@ function renderWork() {
 const RD = { on: false, wid: null, chs: [], first: 0, last: -1, cur: 0, bars: true, busy: false, moved: 0, saveT: null };
 function rdSet() {
   const s = P().settings, r = s.read || {};
-  return { size: Math.min(28, Math.max(14, Math.round(+r.size || +s.size || 18))), lh: Math.min(2.6, Math.max(1.5, +r.lh || 2)), font: r.font === 'gothic' || (!r.font && s.font === 'gothic') ? 'gothic' : 'mincho' };
+  return { size: Math.min(28, Math.max(14, Math.round(+r.size || +s.size || 18))), lh: Math.min(2.6, Math.max(1.5, +r.lh || 2)), font: r.font === 'gothic' || (!r.font && s.font === 'gothic') ? 'gothic' : 'mincho', dir: r.dir === 'v' ? 'v' : 'h' };
 }
 const rdName = c => String(c.title).replace(/^\d+[.．_\-\s　]*/, '') || c.title;
 const rdText = t => String(t).replace(/^﻿/, '').replace(/^[ \t]*<br\s*\/?>[ \t]*$/gim, '').replace(/\s+$/, '');
@@ -1244,9 +1244,15 @@ function rdApply() {
   aa.querySelector('#rdSize').value = r.size; aa.querySelector('#rdSizeV').textContent = r.size;
   aa.querySelector('#rdLh').value = r.lh; aa.querySelector('#rdLhV').textContent = r.lh.toFixed(2);
   aa.querySelectorAll('[data-rdfont]').forEach(b => b.setAttribute('aria-pressed', b.dataset.rdfont === r.font));
+  // v1.1.26 縦書き：下の帯は左へ進む並び（書く・次の章・線・前の章）
+  const v = r.dir === 'v'; el.classList.toggle('vert', v);
+  aa.querySelectorAll('[data-rddir]').forEach(b => b.setAttribute('aria-pressed', b.dataset.rddir === r.dir));
+  el.querySelector('#rdPrev').textContent = v ? '前の章 ›' : '‹ 前の章'; el.querySelector('#rdNext').textContent = v ? '‹ 次の章' : '次の章 ›';
+  el.querySelector('#rdScroll').hidden = v; el.querySelector('.rd-vbox').hidden = !v;
 }
 // 今どの章のどのあたりか（章の中の割合）
 function rdWhere() {
+  if (RD.on && rdSet().dir === 'v') return RD.vn ? { i: RD.vi, f: RD.vp / RD.vn } : null;
   const sc = $('#rdScroll'); if (!sc) return null; const y = sc.scrollTop + 8;
   const secs = [...sc.querySelectorAll('.rd-sec')]; if (!secs.length) return null;
   let sec = secs[0]; for (const x of secs) if (x.offsetTop <= y + sc.clientHeight * 0.25) sec = x;
@@ -1265,8 +1271,8 @@ function rdUpdateBar() {
   el.querySelector('#rdPos').textContent = (p.i + 1) + ' / ' + n + '章';
   el.querySelector('#rdPrev').disabled = p.i === 0; el.querySelector('#rdNext').disabled = p.i >= n - 1;
 }
-function rdBars(on) { RD.bars = on; const el = $('#reader'); if (el) el.classList.toggle('bars', on); if (!on) rdAa(false); }
-function rdAa(on) { const el = $('#reader'); if (!el) return; const a = el.querySelector('.rd-aa'); a.hidden = !on; el.querySelector('#rdAaBtn').setAttribute('aria-pressed', on); }
+function rdBars(on) { RD.bars = on; const el = $('#reader'); if (el) el.classList.toggle('bars', on); if (!on) { rdAa(false); rdBm(false); } }
+function rdAa(on) { const el = $('#reader'); if (!el) return; const a = el.querySelector('.rd-aa'); a.hidden = !on; el.querySelector('#rdAaBtn').setAttribute('aria-pressed', on); if (on) rdBm(false); }
 async function rdSection(i) {
   const c = RD.chs[i]; let text = '';
   try { text = rdText((await api.readChapter(RD.wid, c.id)).text); } catch (e) { text = '（この章を読み込めませんでした）'; }
@@ -1281,7 +1287,7 @@ async function rdFill() {
   try {
     while (RD.on && RD.last < RD.chs.length - 1 && sc.scrollTop + sc.clientHeight * 2.5 > sc.scrollHeight) {
       const sec = await rdSection(RD.last + 1); if (!RD.on || $('#rdScroll') !== sc) return;
-      sc.querySelector('.rd-col').appendChild(sec); RD.last++;
+      sc.querySelector('.rd-col').appendChild(sec); RD.last++; rdHMark();
     }
   } finally { RD.busy = false; }
 }
@@ -1296,18 +1302,178 @@ async function rdShow(i, f) {
   await rdFill();
   const sec = col.querySelector('.rd-sec');
   RD.jumpAt = performance.now(); sc.scrollTop = f > 0 ? sec.offsetTop + f * sec.offsetHeight - 8 : i > 0 ? sec.offsetTop : 0;
+  await rdFill(); RD.moved = 0; RD.jumpAt = performance.now(); rdUpdateBar(); rdSavePos(); rdHMark();
+}
+/* ---------- v1.1.26 縦書き（ページをめくる）としおり ----------
+   縦書きは章を1つずつ、縦書きの段組み（1段＝1ページ。段は下へ並ぶ）に流して、見せる段をずらしてめくる。
+   PC の広い画面は見開き（右のページ→左のページ）。同じ章をもう1つ写して左のページに使う。
+   場所は「何章の何文字目」（rdText を通した本文の何文字目）で持つので、縦横や文字の大きさを変えてもずれない。 */
+const bmOf = w => w && w.shiori && w.shiori.ch ? w.shiori : null;
+RD.txt = new Map();
+async function rdLoad(i) {
+  const c = RD.chs[i]; if (!c) return '';
+  if (RD.txt.has(c.id)) return RD.txt.get(c.id);
+  let t; try { t = rdText((await api.readChapter(RD.wid, c.id)).text); } catch (e) { t = null; }
+  if (t != null) RD.txt.set(c.id, t); return t;
+}
+// 縦中横：半角の数字1〜2桁と「!?」「！？」などの2文字（esc の前に切り分ける。&#39; の数字をつかまないように）
+const rdTcy = l => l.split(/((?<![0-9])[0-9]{1,2}(?![0-9])|[!?！？]{2})/).map((x, k) => k % 2 ? `<span class="tcy">${esc(x)}</span>` : esc(x)).join('');
+function rdVHtml(i, t) {
+  const c = RD.chs[i]; let o = 0;
+  const body = t == null ? '<div class="ln">（この章を読み込めませんでした）</div>'
+    : t ? t.split('\n').map(l => { const h = `<div class="ln" data-o="${o}">${l ? rdTcy(l) : '&#8203;'}</div>`; o += l.length + 1; return h; }).join('')
+    : '<div class="ln muted">（まだ何も書かれていません）</div>';
+  return `<div class="rd-ch"><div class="n">第 ${i + 1} 章</div><div class="t">${esc(rdName(c))}</div><div class="o">◆</div></div><div class="rd-vt">${body}</div><div class="rd-end">― 第 ${i + 1} 章 おわり ―</div>`;   // 最後の章の「ここまでが最新の章です」は .rd-vfin に出す
+}
+function rdGeom() {
+  const box = $('#reader .rd-vbox'); const r = box.getBoundingClientRect();
+  const spread = !IS_ANDROID && r.width >= 820 && r.width > r.height * 1.15, gut = spread ? 72 : 0;
+  return { spread, gut, W: Math.max(120, Math.floor(spread ? (r.width - gut) / 2 : r.width)), H: Math.max(160, Math.floor(r.height)), G: 48 };
+}
+const rdFlow = () => $('#reader .rd-vfr.r .rd-vflow');
+// 文字の箱（行の中の n 文字目）
+function rdCharRect(ln, n) {
+  const tw = document.createTreeWalker(ln, NodeFilter.SHOW_TEXT); let node, k = n;
+  while ((node = tw.nextNode())) { if (k < node.length) { const rg = document.createRange(); rg.setStart(node, k); rg.setEnd(node, k + 1); const rs = rg.getClientRects(); return rs.length ? rs[0] : rg.getBoundingClientRect(); } k -= node.length; }
+  return null;
+}
+const rdLnLen = ln => (ln.textContent || '').replace(/​/g, '').length;
+// 縦書き：k ページ目の最初の文字は何文字目か
+function rdVOffAt(k) {
+  const flow = rdFlow(); if (!flow || !RD.g) return 0; const g = RD.g, top0 = flow.getBoundingClientRect().top, y0 = k * (g.H + g.G);
+  let lastO = 0;
+  for (const ln of flow.querySelectorAll('.ln[data-o]')) {
+    const rs = ln.getClientRects(); if (!rs.length) continue; const o = +ln.dataset.o; lastO = o;
+    if (rs[rs.length - 1].bottom - top0 <= y0 + 2) continue;
+    if (rs[0].top - top0 >= y0 - 2) return o;
+    let a = 0, b = rdLnLen(ln) - 1;   // ページをまたぐ段落：このページに入る最初の文字を探す
+    while (a < b) { const m = (a + b) >> 1, r = rdCharRect(ln, m); if (r && r.top - top0 >= y0 - 2) b = m; else a = m + 1; }
+    return o + a;
+  }
+  return lastO;
+}
+// 縦書き：n 文字目は何ページ目か
+function rdVPageOf(n) {
+  const flow = rdFlow(); if (!flow || !RD.g) return 0; const g = RD.g, top0 = flow.getBoundingClientRect().top;
+  let hit = null; for (const ln of flow.querySelectorAll('.ln[data-o]')) { if (+ln.dataset.o <= n) hit = ln; else break; }
+  if (!hit) return 0;
+  const k = Math.min(n - +hit.dataset.o, Math.max(0, rdLnLen(hit) - 1)); const r = (k > 0 && rdCharRect(hit, k)) || hit.getClientRects()[0];
+  return r ? Math.max(0, Math.floor((r.top - top0 + 2) / (g.H + g.G))) : 0;
+}
+// 横書き：画面のいちばん上に見えている文字は、何章の何文字目か
+function rdHOff() {
+  const p = rdWhere(); if (!p) return { i: RD.cur || 0, off: 0 };
+  const sc = $('#rdScroll'), sec = sc.querySelector(`.rd-sec[data-i="${p.i}"]`), tn = sec && sec.querySelector('.rd-text').firstChild;
+  if (!tn || tn.nodeType !== 3 || !tn.length) return { i: p.i, off: 0 };
+  const y = sc.getBoundingClientRect().top + 8, rg = document.createRange();
+  const bot = k => { rg.setStart(tn, k); rg.setEnd(tn, k + 1); const r = rg.getBoundingClientRect(); return r.bottom; };
+  let a = 0, b = tn.length - 1; if (bot(b) <= y) return { i: p.i, off: b };
+  while (a < b) { const m = (a + b) >> 1; if (bot(m) > y) b = m; else a = m + 1; }
+  while (a > 0 && tn.data[a - 1] !== '\n' && Math.abs(bot(a - 1) - bot(a)) < 2) a--;   // 行の頭にそろえる
+  return { i: p.i, off: a };
+}
+function rdOffNow() { return rdSet().dir === 'v' ? { i: RD.vi, off: rdVOffAt(RD.vp) } : rdHOff(); }
+// 横書きで、章 i の n 文字目へ
+async function rdHGo(i, n) {
+  await rdShow(i, 0); const sc = $('#rdScroll'), sec = sc && sc.querySelector(`.rd-sec[data-i="${i}"]`), tn = sec && sec.querySelector('.rd-text').firstChild;
+  if (!tn || tn.nodeType !== 3 || !n) return;
+  const rg = document.createRange(), k = Math.min(n, tn.length - 1); rg.setStart(tn, k); rg.setEnd(tn, k + 1);
+  RD.jumpAt = performance.now(); sc.scrollTop += rg.getBoundingClientRect().top - sc.getBoundingClientRect().top - (RD.bars ? 72 : 24);
   await rdFill(); RD.moved = 0; RD.jumpAt = performance.now(); rdUpdateBar(); rdSavePos();
+}
+// 横書き：しおりの◆（その行の左の余白）
+function rdHMark() {
+  const col = $('#reader .rd-col'); if (!col) return; const old = col.querySelector('.rd-hmark'); if (old) old.remove();
+  const b = bmOf(workById(RD.wid)); if (!b) return; const ci = RD.chs.findIndex(c => c.id === b.ch);
+  const sec = col.querySelector(`.rd-sec[data-i="${ci}"]`), tn = sec && sec.querySelector('.rd-text').firstChild; if (!sec) return;
+  let top = sec.querySelector('.rd-text').getBoundingClientRect().top;
+  if (tn && tn.nodeType === 3 && tn.length) { const rg = document.createRange(), k = Math.min(b.off, tn.length - 1); rg.setStart(tn, k); rg.setEnd(tn, k + 1); top = rg.getBoundingClientRect().top; }
+  const m = document.createElement('div'); m.className = 'rd-hmark'; m.textContent = '◆'; m.title = 'しおり';
+  m.style.top = (top - col.getBoundingClientRect().top) + 'px'; col.appendChild(m);
+}
+// 縦書き：章 i を出す。pos = { f }（章の中の割合）/{ off }（文字）/{ last }（最後のページ）
+async function rdVShow(i, pos = {}) {
+  const box = $('#reader .rd-vbox'); if (!box) return; i = Math.min(RD.chs.length - 1, Math.max(0, i));
+  RD.busy = true;
+  try {
+    const t = await rdLoad(i); if (!RD.on) return;
+    const g = rdGeom(), html = rdVHtml(i, t); RD.g = g; RD.vi = RD.cur = i;
+    box.querySelectorAll('.rd-vfr').forEach((f, k) => {
+      f.hidden = k === 1 && !g.spread; f.style.width = g.W + 'px'; f.style.height = g.H + 'px';
+      f.innerHTML = k === 1 && !g.spread ? '' : `<div class="rd-vflow" style="width:${g.W}px;height:${g.H}px;column-width:${g.H}px;column-gap:${g.G}px">${html}</div><div class="rd-vmark" hidden title="しおり">◆</div>`;
+    });
+    box.querySelector('.rd-gut').hidden = !g.spread; box.classList.toggle('spread', g.spread);
+    const flow = rdFlow(); RD.vn = Math.max(1, Math.round((flow.scrollHeight + g.G) / (g.H + g.G)));
+    const b = bmOf(workById(RD.wid)); RD.bmPage = b && b.ch === RD.chs[i].id ? rdVPageOf(b.off) : -1;
+    rdVPage(pos.last ? RD.vn - 1 : pos.off != null ? rdVPageOf(pos.off) : pos.f > 0 ? Math.floor(pos.f * RD.vn + 0.001) : 0, true, pos.off);
+  } finally { RD.busy = false; }
+}
+function rdVPage(p, keepBars, off) {
+  const box = $('#reader .rd-vbox'), g = RD.g; if (!box || !g) return;
+  p = Math.min(RD.vn - 1, Math.max(0, p)); if (g.spread) p -= p % 2; RD.vp = p;
+  RD.vOff = off != null ? off : rdVOffAt(p);   // 組み直すときの目じるし（文字の大きさを変えると、測る前に組みが変わってしまうため）
+  box.querySelectorAll('.rd-vfr').forEach((f, k) => {
+    const fl = f.querySelector('.rd-vflow'); if (!fl) return; const q = p + k;
+    fl.style.transform = `translateY(${-q * (g.H + g.G)}px)`; fl.style.visibility = q < RD.vn ? '' : 'hidden';
+    f.querySelector('.rd-vmark').hidden = q !== RD.bmPage;
+  });
+  const fin = $('#reader .rd-vfin'); if (fin) fin.hidden = !(RD.vi === RD.chs.length - 1 && p + (g.spread ? 1 : 0) >= RD.vn - 1);
+  if (!keepBars && RD.bars) rdBars(false);
+  rdUpdateBar(); clearTimeout(RD.saveT); RD.saveT = setTimeout(rdSavePos, 300);
+}
+// めくる：d = 1 で次（左へ）、-1 で前
+async function rdVTurn(d) {
+  if (RD.busy || !RD.g) return; const step = RD.g.spread ? 2 : 1, q = RD.vp + d * step;
+  if (q >= 0 && q < RD.vn) return rdVPage(q);
+  if (d > 0 && RD.vi < RD.chs.length - 1) { await rdVShow(RD.vi + 1, {}); if (RD.bars) rdBars(false); }
+  else if (d < 0 && RD.vi > 0) { await rdVShow(RD.vi - 1, { last: true }); if (RD.bars) rdBars(false); }
+}
+// 文字の大きさを変えた・画面の大きさが変わった・字の形（フォント）が届いた：今の文字の場所を保って組み直す
+async function rdVRelayout() { if (!RD.on || rdSet().dir !== 'v' || !RD.g || RD.busy) return; await rdVShow(RD.vi, { off: RD.vOff != null ? RD.vOff : rdVOffAt(RD.vp) }); }
+async function rdGo(i, pos = {}) { if (rdSet().dir === 'v') await rdVShow(i, pos); else if (pos.off != null) await rdHGo(i, pos.off); else await rdShow(i, pos.f || 0); }
+// しおりの窓
+function rdBm(on) {
+  const el = $('#reader'); if (!el) return; const p = el.querySelector('.rd-bm'); if (!p) return;
+  p.hidden = !on; el.querySelector('#rdBmBtn').setAttribute('aria-pressed', !!on);
+  if (on) { rdAa(false); rdBmFill(); }
+}
+async function rdBmFill() {
+  const p = $('#reader .rd-bm'); if (!p) return; const b = bmOf(workById(RD.wid)); let row = '';
+  if (b) {
+    const ci = RD.chs.findIndex(c => c.id === b.ch), d = new Date(b.at || Date.now());
+    if (ci >= 0) {
+      const t = (await rdLoad(ci)) || ''; const sn = t.slice(b.off, b.off + 60).replace(/\s+/g, ' ').trim().slice(0, 30);
+      row = `<div class="rd-bmrow"><span class="mk">◆</span><div class="bt"><div class="b1">第${ci + 1}章　${esc(rdName(RD.chs[ci]))}</div><div class="b2">${esc(sn) || '（章のはじめ）'}</div></div><span class="bd">${d.getMonth() + 1}月${d.getDate()}日</span></div>
+       <div class="row"><button type="button" class="btn sm gold" data-bm="go">しおりへ飛ぶ</button><button type="button" class="btn sm ghost" data-bm="off">外す</button></div>`;
+    } else row = `<div class="muted small" style="margin:8px 0">しおりを挟んだ章が見つかりません（消したか、名前が変わったようです）。</div><div class="row"><button type="button" class="btn sm ghost" data-bm="off">外す</button></div>`;
+  }
+  if (!$('#reader .rd-bm') || p.hidden) return;
+  p.innerHTML = `<div class="h">しおり</div><button type="button" class="rd-addbm" data-bm="put">＋ このページに${b ? '挟み直す' : '挟む'}</button>${row}<div class="muted small">1つの作品に1本だけ挟めます。引き継ぎファイルでPCとスマホにそろいます。</div>`;
+}
+async function rdBmDo(k) {
+  const w = workById(RD.wid); if (!w) return; const b = bmOf(w);
+  try {
+    if (k === 'put') { const at = rdOffNow(), c = RD.chs[at.i]; if (!c) return; w.shiori = await api.setShiori(RD.wid, { ch: c.id, off: at.off }); toast(b ? 'しおりを挟み直しました' : 'しおりを挟みました'); }
+    else if (k === 'off') { w.shiori = await api.setShiori(RD.wid, null); toast('しおりを外しました'); }
+    else if (k === 'go' && b) { const ci = RD.chs.findIndex(c => c.id === b.ch); rdBm(false); if (ci >= 0) await rdGo(ci, { off: b.off }); return; }
+  } catch (e) { fileErr(e, 'しおりを保存できませんでした'); return; }
+  rdBm(false);
+  if (rdSet().dir === 'v') { const fl = rdFlow(), nb = bmOf(w); RD.bmPage = fl && nb && nb.ch === RD.chs[RD.vi].id ? rdVPageOf(nb.off) : -1; rdVPage(RD.vp, true); } else rdHMark();
 }
 async function openReader(wid, startId) {
   const w = workById(wid); if (!w || !w.chapters.length || RD.on) return;
   if (S.curWork === wid) { try { await saveChapter(); } catch (e) {} }
   closeCov();
-  Object.assign(RD, { on: true, wid, chs: w.chapters.slice(), first: 0, last: -1, cur: 0, busy: false, moved: 0 });
+  Object.assign(RD, { on: true, wid, chs: w.chapters.slice(), first: 0, last: -1, cur: 0, busy: false, moved: 0, vi: 0, vp: 0, vn: 0, g: null, bmPage: -1 }); RD.txt.clear();
   const n = RD.chs.length;
   const el = document.createElement('div'); el.id = 'reader'; el.className = 'reader bars' + (IS_ANDROID ? ' phone' : '');
   el.innerHTML = `<div class="rd-scroll" id="rdScroll" tabindex="-1"><div class="rd-col"></div></div>
-  <div class="rd-bar top"><button type="button" class="btn sm ghost" data-rd="close">‹ 目次</button><div class="rd-ttl"></div><button type="button" class="btn sm ghost" id="rdAaBtn" aria-pressed="false" aria-label="読むときの文字">Aa</button></div>
+  <div class="rd-bar top"><button type="button" class="btn sm ghost" data-rd="close">‹ 目次</button><div class="rd-ttl"></div><button type="button" class="btn sm ghost" id="rdBmBtn" aria-pressed="false">しおり</button><button type="button" class="btn sm ghost" id="rdAaBtn" aria-pressed="false" aria-label="読むときの文字">Aa</button></div>
+  <div class="rd-vbox" hidden><div class="rd-vfr r"></div><div class="rd-vfr l" hidden></div><div class="rd-gut" hidden></div></div>
+  <div class="rd-vfin" hidden><span class="muted small">ここまでが最新の章です。</span><button type="button" class="btn sm" data-rd="close">‹ 目次へ戻る</button><button type="button" class="btn sm gold" data-rd="write">✎ 続きを書く</button></div>
+  <div class="rd-bm" hidden></div>
   <div class="rd-aa" hidden><div class="h">読むときの文字</div>
+   <div class="rw"><span>向き</span><div class="segm"><button type="button" data-rddir="h">横書き</button><button type="button" data-rddir="v">縦書き</button></div></div>
    <div class="rw"><span>文字の大きさ</span><input type="range" id="rdSize" min="14" max="28" step="1"><span id="rdSizeV" class="v"></span></div>
    <div class="rw"><span>行の間</span><input type="range" id="rdLh" min="1.5" max="2.6" step="0.05"><span id="rdLhV" class="v"></span></div>
    <div class="rw"><span>書体</span><div class="segm"><button type="button" data-rdfont="mincho">明朝</button><button type="button" data-rdfont="gothic">ゴシック</button></div></div>
@@ -1317,6 +1483,7 @@ async function openReader(wid, startId) {
   document.body.appendChild(el); document.body.classList.add('reading'); rdApply();
   const sc = el.querySelector('#rdScroll');
   el.addEventListener('click', e => {
+    const bm = e.target.closest('[data-bm]'); if (bm) { rdBmDo(bm.dataset.bm); return; }
     const b = e.target.closest('[data-rd]');
     if (b) { const k = b.dataset.rd;
       if (k === 'close') closeReader();
@@ -1324,21 +1491,37 @@ async function openReader(wid, startId) {
       else if (k === 'here') { const c = RD.chs[RD.cur]; closeReader(); if (c) openChapter(wid, c.id); }
       else if (k === 'write') { const c = RD.chs[RD.chs.length - 1]; closeReader(); openChapter(wid, c.id); }
       return; }
-    if (e.target.closest('button,input,a,.rd-aa,.rd-bar')) return;
+    if (e.target.closest('button,input,a,.rd-aa,.rd-bar,.rd-bm,.rd-vfin')) return;
+    if (performance.now() - (RD.swipeAt || 0) < 450) return;
     const sel = window.getSelection && window.getSelection(); if (sel && !sel.isCollapsed && sel.anchorNode && el.contains(sel.anchorNode) && String(sel) !== '') return;   // 文字を選んでいるときは帯を出し入れしない
     if (!el.querySelector('.rd-aa').hidden) { rdAa(false); return; }
+    if (!el.querySelector('.rd-bm').hidden) { rdBm(false); return; }
+    if (el.classList.contains('vert')) { const x = e.clientX / window.innerWidth; if (x < 0.34) { rdVTurn(1); return; } if (x > 0.66) { rdVTurn(-1); return; } }   // 縦書き：左で次、右で前、まん中で帯
     rdBars(!RD.bars);
   });
   el.querySelector('#rdAaBtn').onclick = () => rdAa(el.querySelector('.rd-aa').hidden);
-  el.querySelector('#rdPrev').onclick = () => rdShow(RD.cur - 1, 0);
-  el.querySelector('#rdNext').onclick = () => rdShow(RD.cur + 1, 0);
+  el.querySelector('#rdBmBtn').onclick = () => rdBm(el.querySelector('.rd-bm').hidden);
+  el.querySelector('#rdPrev').onclick = () => rdGo(RD.cur - 1);
+  el.querySelector('#rdNext').onclick = () => rdGo(RD.cur + 1);
   el.querySelector('#rdRange').addEventListener('input', e => { el.querySelector('#rdPos').textContent = (+e.target.value + 1) + ' / ' + n + '章'; });
-  el.querySelector('#rdRange').addEventListener('change', e => { rdShow(+e.target.value, 0); e.target.blur(); });
+  el.querySelector('#rdRange').addEventListener('change', e => { rdGo(+e.target.value); e.target.blur(); });
   let saveSet = null;
-  const setRead = (k, v) => { const s = P().settings; s.read = Object.assign({}, s.read, { [k]: v }); const p = rdWhere(); rdApply(); if (p) { const sec = sc.querySelector(`.rd-sec[data-i="${p.i}"]`); RD.jumpAt = performance.now(); if (sec) sc.scrollTop = sec.offsetTop + p.f * sec.offsetHeight - 8; } clearTimeout(saveSet); saveSet = setTimeout(saveProgress, 400); };
+  const setRead = (k, v) => { const s = P().settings; if (rdSet().dir === 'v') { s.read = Object.assign({}, s.read, { [k]: v }); rdApply(); clearTimeout(RD.relT); RD.relT = setTimeout(rdVRelayout, 120); clearTimeout(saveSet); saveSet = setTimeout(saveProgress, 400); return; }
+    s.read = Object.assign({}, s.read, { [k]: v }); const p = rdWhere(); rdApply(); if (p) { const sec = sc.querySelector(`.rd-sec[data-i="${p.i}"]`); RD.jumpAt = performance.now(); if (sec) sc.scrollTop = sec.offsetTop + p.f * sec.offsetHeight - 8; } clearTimeout(saveSet); saveSet = setTimeout(saveProgress, 400); };
   el.querySelector('#rdSize').addEventListener('input', e => setRead('size', +e.target.value));
   el.querySelector('#rdLh').addEventListener('input', e => setRead('lh', +e.target.value));
   el.querySelectorAll('[data-rdfont]').forEach(b => b.addEventListener('click', () => setRead('font', b.dataset.rdfont)));
+  // v1.1.26 向き：今の文字の場所を保ったまま、横書き⇔縦書き
+  el.querySelectorAll('[data-rddir]').forEach(b => b.addEventListener('click', async () => {
+    const d = b.dataset.rddir; if (rdSet().dir === d || RD.busy) return; const at = rdOffNow(); const s = P().settings;
+    s.read = Object.assign({}, s.read, { dir: d }); rdApply(); clearTimeout(saveSet); saveSet = setTimeout(saveProgress, 400);
+    if (d === 'v') await rdVShow(at.i, { off: at.off }); else await rdHGo(at.i, at.off);
+  }));
+  // 縦書きのめくり：スワイプ（指を右へ＝次）・ホイール
+  const vb = el.querySelector('.rd-vbox'); let tx = null, ty = 0, wAcc = 0, wAt = 0;
+  vb.addEventListener('touchstart', e => { const t = e.touches[0]; tx = t.clientX; ty = t.clientY; }, { passive: true });
+  vb.addEventListener('touchend', e => { if (tx == null) return; const t = e.changedTouches[0], dx = t.clientX - tx, dy = t.clientY - ty; tx = null; if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.3) { RD.swipeAt = performance.now(); rdVTurn(dx > 0 ? 1 : -1); } }, { passive: true });
+  el.addEventListener('wheel', e => { if (!el.classList.contains('vert') || e.target.closest('.rd-aa,.rd-bm,.rd-bar')) return; e.preventDefault(); wAcc += e.deltaY || e.deltaX; const now = performance.now(); if (Math.abs(wAcc) >= 40 && now - wAt > 280) { wAt = now; rdVTurn(wAcc > 0 ? 1 : -1); wAcc = 0; } }, { passive: false });
   let lastY = 0;
   sc.addEventListener('scroll', () => {
     const d = Math.abs(sc.scrollTop - lastY); lastY = sc.scrollTop; if (performance.now() - (RD.jumpAt || 0) > 250) RD.moved += d;   // 章へ飛んだときの動きは数えない（帯を出したまま）
@@ -1347,18 +1530,25 @@ async function openReader(wid, startId) {
   }, { passive: true });
   const pos = startId ? null : lsGet('ss.read.' + wid, null);
   let i = startId ? RD.chs.findIndex(c => c.id === startId) : pos ? RD.chs.findIndex(c => c.id === pos.ch) : 0; if (i < 0) i = 0;
-  await rdShow(i, pos && RD.chs[i] && pos.ch === RD.chs[i].id ? +pos.f || 0 : 0);
+  const f0 = pos && RD.chs[i] && pos.ch === RD.chs[i].id ? +pos.f || 0 : 0;
+  if (rdSet().dir === 'v') { await rdVShow(i, { f: f0 }); if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => setTimeout(rdVRelayout, 50)); }
+  else await rdShow(i, f0);
   RD.moved = 0; lastY = sc.scrollTop; try { sc.focus({ preventScroll: true }); } catch (e) {}
 }
 function closeReader() {
   if (!RD.on) return; rdSavePos(); clearTimeout(RD.saveT);
-  RD.on = false; const el = $('#reader'); if (el) el.remove(); document.body.classList.remove('reading');
+  RD.on = false; RD.txt.clear(); RD.g = null; const el = $('#reader'); if (el) el.remove(); document.body.classList.remove('reading');
   if (S.view === 'library' && S.openWork === RD.wid) renderWork();
 }
 document.addEventListener('keydown', e => {
   if (!RD.on || dlg.open) return;
-  if (e.key === 'Escape') { e.preventDefault(); const a = $('#reader .rd-aa'); if (a && !a.hidden) rdAa(false); else closeReader(); }
+  if (e.key === 'Escape') { e.preventDefault(); const a = $('#reader .rd-aa'), b = $('#reader .rd-bm'); if (a && !a.hidden) rdAa(false); else if (b && !b.hidden) rdBm(false); else closeReader(); return; }
+  // v1.1.26 縦書き：←・スペース・PageDown・↓で次、→・PageUp・↑で前
+  if (rdSet().dir !== 'v' || (e.target && e.target.closest && e.target.closest('input,textarea,select'))) return;
+  const k = e.key, nx = k === 'ArrowLeft' || k === ' ' || k === 'PageDown' || k === 'ArrowDown', pv = k === 'ArrowRight' || k === 'PageUp' || k === 'ArrowUp';
+  if (nx || pv) { e.preventDefault(); rdVTurn(nx ? 1 : -1); }
 }, true);
+window.addEventListener('resize', () => { if (!RD.on || rdSet().dir !== 'v') return; clearTimeout(RD.relT); RD.relT = setTimeout(rdVRelayout, 200); });
 
 function closeCov() { const p = $('.cov-pop'); if (p) p.remove(); const sp = $('#wSpine'); if (sp) { sp.classList.remove('open'); sp.setAttribute('aria-expanded', 'false'); } if (S.covDirty) { S.covDirty = false; if (S.view === 'library') renderLibrary(); } }
 document.addEventListener('pointerdown', e => { const p = $('.cov-pop'); if (p && !p.contains(e.target) && !e.target.closest('#wSpine')) closeCov(); });
@@ -2985,7 +3175,7 @@ if (window.visualViewport) {
 }
 if (api.onBack) api.onBack(() => {
   if (dlg.open) { closeDlg(); return; }
-  if (RD.on) { const a = $('#reader .rd-aa'); if (a && !a.hidden) rdAa(false); else closeReader(); return; }
+  if (RD.on) { const a = $('#reader .rd-aa'), b = $('#reader .rd-bm'); if (a && !a.hidden) rdAa(false); else if (b && !b.hidden) rdBm(false); else closeReader(); return; }
   if (S.tidy) { S.tidy = false; S.picked.clear(); renderLibrary(); return; }
   if (S.view === 'library' && S.openWork) { S.openWork = null; renderLibrary(); return; }
   if (S.view === 'editor' && S.curWork) { saveChapter(); openWork(S.curWork); return; }
