@@ -3081,15 +3081,19 @@ function mergeProgress(local, incoming) {
     a.total = Math.max(a.total || 0, L.total || 0);
   }
   sumLedgers(m);
-  for (const [d, v] of Object.entries(o.kills)) if (!m.kills[d]) m.kills[d] = v;
+  // v1.1.27: 同じ日の記録が両方にあって金額が違うとき（連続日数を端末ごとに数えているため起こる）は、大きい方にそろえる。
+  // 前は読み込む側の記録を残していたので、PC とスマホでそれぞれ自分の金額が残り、何度引き継いでもコインがそろわなかった。
+  const big = (a, b) => Math.max(Number(a) || 0, Number(b) || 0);
+  for (const [d, v] of Object.entries(o.kills)) m.kills[d] = big(m.kills[d], v);
   for (const cat of CATS) m.owned[cat] = [...new Set([...(m.owned[cat] || []), ...(o.owned[cat] || [])])];
   m.zone = { count: Math.max(m.zone.count, o.zone.count), longest: Math.max(m.zone.longest, o.zone.longest), total: Math.max(m.zone.total, o.zone.total) };
   for (const [d, v] of Object.entries(o.zoneDaily)) { const a = m.zoneDaily[d] || { n: 0, ms: 0 }; m.zoneDaily[d] = { n: Math.max(a.n, v.n || 0), ms: Math.max(a.ms, v.ms || 0) }; }
   m.totalWritten = Math.max(m.totalWritten, o.totalWritten);
-  for (const key of ['loginRewards', 'levelRewards']) for (const [x, v] of Object.entries(o[key])) if (!m[key][x]) m[key][x] = v;
+  for (const key of ['loginRewards', 'levelRewards']) for (const [x, v] of Object.entries(o[key])) m[key][x] = big(m[key][x], v);
   // v1.1.24: the shelf order (mode and the hand-arranged list) follows whichever side changed it last
   if (o.shelf && (Number(o.shelf.at) || 0) > (Number(m.shelf && m.shelf.at) || 0)) m.shelf = JSON.parse(JSON.stringify(o.shelf));
   if ((o.login.last || '') > (m.login.last || '')) m.login = { ...o.login };
+  else if (o.login.last && o.login.last === m.login.last) m.login.streak = big(m.login.streak, o.login.streak);   // 同じ日なら長い方の連続日数
   const sum = obj => Object.values(obj).reduce((a, b) => a + (Number(b) || 0), 0);
   const earned = sum(m.kills) + sum(m.loginRewards) + sum(m.levelRewards);
   const spent = CATS.reduce((a, cat) => a + m.owned[cat].reduce((s, id) => s + priceOf(cat, id), 0), 0);
